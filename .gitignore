@@ -1,0 +1,28 @@
+# Node
+frontend/node_modules/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# IDE
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.venv/
+venv/
+
+# Cache
+.qoder/
+
+# User data (本地采集的请求数据，不提交)
+data/requests.jsonl

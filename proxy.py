@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 """
-AI Agent Explorer - Proxy v1.2
-The DevTools for AI Agents
+AgentLens (AI探针) - Proxy v1.2
+The DevTools for AI Agents.
 
-Intercept Claude Code API requests, save to data/requests.jsonl.
+Intercept AI Agent API requests, save to data/requests.jsonl.
 Correctly handles SSE streaming + request context lifecycle.
 
 Usage: python proxy.py
@@ -249,8 +249,8 @@ def proxy_handler(path):
 
 if __name__ == "__main__":
     print("=" * 55)
-    print("  AI Agent Explorer - Proxy v1.2")
-    print("  The DevTools for AI Agents")
+    print("  AgentLens (AI探针) - Proxy v1.2")
+    print("  The DevTools for AI Agents.")
     print("=" * 55)
     print(f"  Listen : http://localhost:{LISTEN_PORT}")
     print(f"  Target : {TARGET_BASE}")

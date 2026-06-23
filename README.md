@@ -1,18 +1,22 @@
-# AI Agent Explorer
+# AgentLens
 
-> The DevTools for AI Agents
-> See how Claude Code actually plans, calls tools, and builds answers.
+> The DevTools for AI Agents.
+> See prompts, context, tools, memory, and execution flows in one place.
 
-**看见 AI Agent 真正的思考、调用和决策过程。**
+**AI Agent 可观测性工具。让开发者看见 Agent 的上下文、工具调用、记忆注入和执行链路。**
+
+中文产品名：**AI探针**
 
 ## 解决什么问题
 
-- Claude 为什么变笨了？→ 看上下文是不是被撑爆了
-- CLAUDE.md 到底生效了吗？→ 在 System Prompt 里一目了然
+- Agent 为什么变笨了？→ 看上下文是不是被撑爆了
+- CLAUDE.md / Rules 到底生效了吗？→ 在 System Prompt 里一目了然
 - Skill 到底塞哪里了？→ 展开 Messages 就看到
+- Memory 到底注入了什么？→ 上下文分布一览无余
 - MCP 工具到底传了什么？→ Tools 区完整展示
 - 上下文到底用了多少？→ 可视化 Bar 直接看分布
 - 一个问题为什么调了这么多次 API？→ 请求类型标签告诉你
+- 执行链路是怎样的？→ 思考→调用工具→获取结果→生成回答，全流程可见
 
 ## 架构
 
@@ -27,52 +31,72 @@ data/requests.jsonl — 每行一条完整记录（request + response）
 
 server.py (localhost:8900) — REST API + 静态前端
     ↓
-浏览器 — 实时查看、3秒自动刷新
+浏览器 — React SPA 四页面（总览 / 提示词 / 对比 / 链路）
+
+前端技术栈：React 19 + TypeScript + Vite + TailwindCSS
+构建产物：static/（Vite build → Flask 直接 serve）
 ```
 
 ## 快速开始
 
 ```powershell
-# 1. 安装依赖
+# 1. 安装 Python 依赖
 pip install -r requirements.txt
 
-# 2. 启动 Web UI（一个终端）
+# 2. 构建前端（首次需要 Node.js，后续 server.py 直接 serve 静态产物）
+cd frontend && npm install && npm run build && cd ..
+
+# 3. 启动 Web UI（一个终端）
 python server.py
 
-# 3. 启动代理（另一个终端，指定你的真实 API 地址）
+# 4. 启动代理（另一个终端，指定你的真实 API 地址）
 $env:PROXY_TARGET="https://api.deepseek.com/anthropic"
 python proxy.py
 
-# 4. 配置 Claude Code 走代理
+# 5. 配置 Claude Code 走代理
 $env:ANTHROPIC_BASE_URL="http://localhost:8899"
 claude
 
-# 5. 浏览器打开
+# 6. 浏览器打开
 http://localhost:8900
+```
+
+**前端开发模式**（修改 UI 时用，热更新）：
+
+```bash
+cd frontend && npm run dev    # Vite 开发服务器，自动代理 /api 到 Flask
 ```
 
 Linux/Mac 用 `export` 替代 `$env:`。
 
 ## 功能
 
-### 请求列表（左侧面板）
+四个页面，一个侧边栏：
 
-- **请求类型标签**：🔵 主请求 / 🔍 工具调用 / 📋 Recap
-- **用户消息预览**：直接显示"今天厦门天气如何"而不只是"1 msgs"
-- **会话颜色区分**：不同 Session-Id 用不同颜色圆点标识
-- **Token / 耗时 / 模型** 一目了然
+### 总览 — 一眼看清上下文
 
-### 请求详情（右侧面板）
+- **已加载上下文**：CLAUDE.md / 记忆 / 技能 / 规则 / MCP 工具，每项显示 ✓/✗ 状态、Token 数、来源路径
+- **上下文占用**：横向分布图，直观看到每部分占比
+- **警告**：对话历史膨胀、上下文接近上限、缺失关键配置等智能提示
 
-- **上下文可视化条形图**：直观看到每个部分占了多少
-- **智能标签**：System Prompt 分段标注（Billing / Identity / Core Instructions）
-- **Messages 语义识别**：CLAUDE.md + Memory + Rules / Agent Types + Skills / Tool Result
-- **Tools 完整列表**：所有注册的工具定义
+### 提示词 — 最终 Prompt 组成
 
-### Response 查看
+- **左侧树**：系统 / 消息 / 工具 三组可折叠，每项独立节点
+  - 系统提示词：计费标记、身份声明、核心指令（固定模板标注）
+  - 消息：CLAUDE.md / 记忆 / 规则 / 技能 / 对话历史 / 工具结果 逐条拆开
+  - 工具：完整 MCP 工具定义列表
+- **右侧内容**：点击节点查看完整内容，带行号，JSON 自动格式化，超长内容可折叠
 
-- 流式 SSE 响应逐事件展示（thinking / text / tool_use）
-- 非流式响应 JSON 格式化
+### 对比 — 请求间上下文变化
+
+- 当前请求 vs 上一请求的结构化 Diff
+- 新增 / 删除 / 修改 / 截断 四类变化，类似 Git Diff
+- CLAUDE.md / 记忆 / 技能 / 规则 逐项对比
+
+### 链路 — 执行流程（即将上线）
+
+- User → 思考 → 调用工具 → 结果 → 回复 全链路可视化
+- 点击节点查看输入 / 输出 / 耗时
 
 ## 一个问题到底调了几次 API？
 
@@ -116,7 +140,12 @@ data/requests.jsonl
 
 ## 下一步
 
+- [x] 多页面 SPA 架构（React + Vite + TypeScript + TailwindCSS）
+- [x] Context Diff — 请求间上下文变化对比
 - [ ] 按会话分组折叠
-- [ ] 上下文分布饼图（CLAUDE.md / History / Skill / MCP 各占多少）
 - [ ] 搜索功能（在所有请求中搜索特定内容）
+- [ ] SSE 实时推送（替代 3 秒轮询）
 - [ ] Token 使用趋势图
+- [ ] Execution Flow 完整实现
+- [ ] PyPI 包发布 (`pip install agentlens`)
+- [ ] 正向代理模式（支持 Qoder CLI / Cursor CLI 等）

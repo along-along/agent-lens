@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-AI Agent Explorer - Web Server v1.0
+AgentLens (AI探针) - Web Server v1.0
+The DevTools for AI Agents.
 Provides REST API + static file serving for the viewer UI.
 Port: 8900 (configurable via VIEWER_PORT env var)
 """
@@ -177,13 +178,13 @@ def _smart_system_label(text, index):
     if "billing-header" in text or "x-anthropic-billing" in text:
         return "计费标记（固定）", True
     if "You are Claude Code" in text and len(text) < 200:
-        return "身份声明（固定）— 'You are Claude Code'", True
+        return "身份声明（固定）", True
     if "You are an interactive agent" in text or "# Harness" in text:
-        return "核心指令（固定）— Harness/Memory/Environment 规则", True
+        return "核心指令（固定）", True
     if "performing a web search" in text:
         return "工具辅助指令（固定）", True
     if len(text) > 5000:
-        return "核心指令（固定）— 完整系统规则", True
+        return "核心指令（固定）", True
     return f"System #{index+1}", False
 
 
@@ -244,20 +245,37 @@ def _extract_breakdown(body, messages):
         for path, content_text in memory_matches:
             breakdown["memory"] = {"path": path.strip(), "content": content_text.strip(), "chars": len(content_text.strip())}
 
-    # Extract skills from system messages
+    # 提取技能 — 只从 "skills are available" 段落中提取
     for msg in messages:
-        if msg.get("role") != "system":
+        if msg.get("role") != "user":
             continue
         content = msg.get("content", "")
-        if not isinstance(content, str):
+        text = ""
+        if isinstance(content, list):
+            for item in content:
+                if isinstance(item, dict) and item.get("type") == "text":
+                    text += item.get("text", "")
+        elif isinstance(content, str):
+            text = content
+
+        # 必须明确包含 "skills are available" 才进入
+        if "skills are available" not in text.lower():
             continue
-        if "skills are available" not in content.lower() and "skill" not in content.lower():
+
+        # 截断：取 "skills are available" 之后、"Available agent types" 之前的部分
+        skill_start = text.lower().find("skills are available")
+        if skill_start == -1:
             continue
-        # Extract skill names
+        skill_block = text[skill_start:]
+        agent_cut = skill_block.lower().find("available agent types")
+        if agent_cut != -1:
+            skill_block = skill_block[:agent_cut]
+
+        # 从技能块中提取 - name: description 格式的行
         import re
-        skill_matches = re.findall(r'^- (\S+?)(?::|$)', content, re.MULTILINE)
+        skill_matches = re.findall(r'^- (\S+?):', skill_block, re.MULTILINE)
         for s in skill_matches:
-            if s and not s.startswith('-') and len(s) < 60:
+            if s and not s.startswith('-') and len(s) < 80:
                 breakdown["skills"].append(s)
 
     # Count history turns (assistant+user pairs, excluding first user msg)
@@ -418,12 +436,16 @@ def index():
 
 @app.route("/<path:filename>")
 def static_files(filename):
-    return send_from_directory(STATIC_DIR, filename)
+    # SPA fallback: serve index.html for client-side routes
+    file_path = os.path.join(STATIC_DIR, filename)
+    if os.path.exists(file_path) and os.path.isfile(file_path):
+        return send_from_directory(STATIC_DIR, filename)
+    return send_from_directory(STATIC_DIR, "index.html")
 
 
 if __name__ == "__main__":
     print("")
-    print("  [AI Agent Explorer] Web 服务已启动！")
+    print("  [AgentLens / AI探针] Web 服务已启动！")
     print(f"  请在浏览器访问: http://localhost:{VIEWER_PORT}")
     print("")
     print("  提示: 此窗口可最小化到后台，不要关闭。")

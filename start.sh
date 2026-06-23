@@ -1,6 +1,7 @@
 #!/bin/bash
 echo "============================================"
-echo "  AI Agent Explorer - Starting..."
+echo "  AgentLens (AI探针) - Starting..."
+echo "  The DevTools for AI Agents."
 echo "============================================"
 echo ""
 
