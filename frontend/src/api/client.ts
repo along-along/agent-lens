@@ -54,6 +54,7 @@ export interface ContextBreakdown {
   rules: { path: string; content: string; chars: number }[];
   memory: { path: string; content: string; chars: number } | null;
   skills: string[];
+  tool_names: string[];
   history_turns: number;
   tool_results: { tool_use_id: string; preview: string }[];
   model_params: Record<string, unknown>;

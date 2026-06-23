@@ -245,10 +245,8 @@ def _extract_breakdown(body, messages):
         for path, content_text in memory_matches:
             breakdown["memory"] = {"path": path.strip(), "content": content_text.strip(), "chars": len(content_text.strip())}
 
-    # 提取技能 — 只从 "skills are available" 段落中提取
+    # 提取技能 — 从 system/user 消息中的 "skills are available" 段落提取
     for msg in messages:
-        if msg.get("role") != "user":
-            continue
         content = msg.get("content", "")
         text = ""
         if isinstance(content, list):
@@ -277,6 +275,10 @@ def _extract_breakdown(body, messages):
         for s in skill_matches:
             if s and not s.startswith('-') and len(s) < 80:
                 breakdown["skills"].append(s)
+
+    # 提取工具名称
+    tools = body.get("tools", [])
+    breakdown["tool_names"] = [t.get("name", "?") for t in tools]
 
     # Count history turns (assistant+user pairs, excluding first user msg)
     turn_count = 0

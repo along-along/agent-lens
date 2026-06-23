@@ -24,6 +24,7 @@ type TreeNode = {
 const GROUP_META: Record<string, { label: string; icon: string }> = {
   system:   { label: "系统", icon: "⚙️" },
   messages: { label: "消息", icon: "💬" },
+  skills:   { label: "技能", icon: "⚡" },
   tools:    { label: "工具", icon: "🔧" },
 };
 
@@ -32,7 +33,7 @@ export default function PromptInspector({ selectedId }: Props) {
   const [selectedNode, setSelectedNode] = useState<TreeNode | null>(null);
   const [collapsed, setCollapsed] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(
-    new Set(["system", "messages", "tools"])
+    new Set(["system", "messages", "skills", "tools"])
   );
 
   useEffect(() => {
@@ -51,7 +52,7 @@ export default function PromptInspector({ selectedId }: Props) {
   };
 
   const tree = useMemo(() => {
-    if (!context) return { system: [], messages: [], tools: [] } as Record<string, TreeNode[]>;
+    if (!context) return { system: [], messages: [], skills: [], tools: [] } as Record<string, TreeNode[]>;
 
     const bd = context.breakdown;
     const sections = context.sections;
@@ -97,14 +98,6 @@ export default function PromptInspector({ selectedId }: Props) {
       });
     });
 
-    if (bd.skills.length > 0) {
-      msgNodes.push({
-        key: "msg-skills",
-        label: `技能 — ${bd.skills.length} 个已加载`,
-        content: bd.skills.join("\n"),
-      });
-    }
-
     if (bd.history_turns > 0) {
       msgNodes.push({
         key: "msg-history",
@@ -120,22 +113,37 @@ export default function PromptInspector({ selectedId }: Props) {
       });
     });
 
+    // ── 技能 ──
+    const skillNodes: TreeNode[] = bd.skills.map((name) => ({
+      key: `skill-${name}`,
+      label: name,
+    }));
+
     // ── 工具 ──
-    const toolsSection = sections.find((s) => s.type === "tools");
     const toolsNodes: TreeNode[] = [];
-    if (toolsSection) {
-      toolsNodes.push({
-        key: "tools-defs",
-        label: `工具定义（${toolsSection.tool_names?.length || 0} 个）`,
-        tokens: Math.round(toolsSection.chars / 4),
-        isFixed: toolsSection.is_fixed,
-        content: toolsSection.content,
+    if (bd.tool_names.length > 0) {
+      // Parse tools JSON for individual definitions
+      const toolsSection = sections.find((s) => s.type === "tools");
+      let toolDefs: Record<string, unknown>[] = [];
+      if (toolsSection?.content) {
+        try {
+          toolDefs = JSON.parse(toolsSection.content);
+        } catch {}
+      }
+      bd.tool_names.forEach((name) => {
+        const def = toolDefs.find((t: Record<string, unknown>) => t.name === name);
+        toolsNodes.push({
+          key: `tool-${name}`,
+          label: name,
+          content: def ? JSON.stringify(def, null, 2) : undefined,
+        });
       });
     }
 
     return {
       system: systemNodes,
       messages: msgNodes,
+      skills: skillNodes,
       tools: toolsNodes,
     };
   }, [context]);
