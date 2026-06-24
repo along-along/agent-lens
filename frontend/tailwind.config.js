@@ -1,5 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 export default {
+  darkMode: "class",
   content: ["./index.html", "./src/**/*.{js,ts,jsx,tsx}"],
   theme: {
     extend: {
@@ -22,6 +23,14 @@ export default {
           amber:    "#d97706",
           red:      "#dc2626",
           purple:   "#7c3aed",
+          // Dark mode palette
+          "dark-bg":       "#0f172a",
+          "dark-sidebar":  "#1e293b",
+          "dark-card":     "#1e293b",
+          "dark-border":   "#334155",
+          "dark-text":     "#f1f5f9",
+          "dark-muted":    "#94a3b8",
+          "dark-subtle":   "#64748b",
         },
       },
     },

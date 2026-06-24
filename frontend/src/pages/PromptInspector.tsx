@@ -7,6 +7,7 @@ import {
 } from "../api/client";
 import { fmtK } from "../lib/utils";
 import { FileText, ChevronDown, ChevronRight, Minimize2, Maximize2 } from "lucide-react";
+import { ContentSkeleton } from "../components/Skeleton";
 
 interface Props {
   selectedId: number | null;
@@ -32,14 +33,18 @@ export default function PromptInspector({ selectedId }: Props) {
   const [context, setContext] = useState<ContextResponse | null>(null);
   const [selectedNode, setSelectedNode] = useState<TreeNode | null>(null);
   const [collapsed, setCollapsed] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [expandedGroups, setExpandedGroups] = useState<Set<string>>(
     new Set(["system", "messages", "skills", "tools"])
   );
 
   useEffect(() => {
     if (!selectedId) return;
-    fetchRequestContext(selectedId).then(setContext);
+    setLoading(true);
     setSelectedNode(null);
+    fetchRequestContext(selectedId)
+      .then(setContext)
+      .finally(() => setLoading(false));
   }, [selectedId]);
 
   const toggleGroup = (group: string) => {
@@ -74,7 +79,7 @@ export default function PromptInspector({ selectedId }: Props) {
     if (bd.claude_md) {
       msgNodes.push({
         key: "msg-claude-md",
-        label: `CLAUDE.md — ${bd.claude_md.path.split(/[/\\]/).pop()}`,
+        label: `CLAUDE.md · ${bd.claude_md.path.split(/[/\\]/).pop()}`,
         tokens: Math.round(bd.claude_md.chars / 4),
         content: bd.claude_md.content,
       });
@@ -83,7 +88,7 @@ export default function PromptInspector({ selectedId }: Props) {
     if (bd.memory) {
       msgNodes.push({
         key: "msg-memory",
-        label: `记忆 — ${bd.memory.path.split(/[/\\]/).pop()}`,
+        label: `记忆 · ${bd.memory.path.split(/[/\\]/).pop()}`,
         tokens: Math.round(bd.memory.chars / 4),
         content: bd.memory.content,
       });
@@ -92,7 +97,7 @@ export default function PromptInspector({ selectedId }: Props) {
     bd.rules.forEach((rule) => {
       msgNodes.push({
         key: `msg-rule-${rule.path}`,
-        label: `规则 — ${rule.path.split(/[/\\]/).pop()}`,
+        label: `规则 · ${rule.path.split(/[/\\]/).pop()}`,
         tokens: Math.round(rule.chars / 4),
         content: rule.content,
       });
@@ -101,14 +106,14 @@ export default function PromptInspector({ selectedId }: Props) {
     if (bd.history_turns > 0) {
       msgNodes.push({
         key: "msg-history",
-        label: `对话历史 — ${bd.history_turns} 轮`,
+        label: `对话历史 · ${bd.history_turns} 轮`,
       });
     }
 
     bd.tool_results.forEach((tr) => {
       msgNodes.push({
         key: `msg-tr-${tr.tool_use_id}`,
-        label: `工具结果 — ${tr.tool_use_id.slice(0, 8)}`,
+        label: `工具结果 · ${tr.tool_use_id.slice(0, 8)}`,
         content: tr.preview,
       });
     });
@@ -122,7 +127,6 @@ export default function PromptInspector({ selectedId }: Props) {
     // ── 工具 ──
     const toolsNodes: TreeNode[] = [];
     if (bd.tool_names.length > 0) {
-      // Parse tools JSON for individual definitions
       const toolsSection = sections.find((s) => s.type === "tools");
       let toolDefs: Record<string, unknown>[] = [];
       if (toolsSection?.content) {
@@ -169,13 +173,13 @@ export default function PromptInspector({ selectedId }: Props) {
     return (
       <div>
         <div className="flex items-center justify-between mb-2">
-          <h3 className="text-[11px] font-semibold text-app-muted uppercase tracking-wider">
-            内容 {isJson && <span className="text-app-accent">· JSON</span>}
+          <h3 className="text-[12px] font-semibold text-app-muted dark:text-slate-400 uppercase tracking-wider">
+            内容 {isJson && <span className="text-app-accent dark:text-blue-400">· JSON</span>}
           </h3>
           {lines.length > 50 && (
             <button
               onClick={() => setCollapsed(!collapsed)}
-              className="flex items-center gap-1 text-[11px] text-app-muted hover:text-app-text transition-colors"
+              className="flex items-center gap-1 text-[12px] text-app-muted dark:text-slate-400 hover:text-app-text dark:hover:text-slate-200 transition-colors"
             >
               {collapsed ? (
                 <><Maximize2 className="w-3 h-3" /> 展开全部（{lines.length} 行）</>
@@ -185,13 +189,13 @@ export default function PromptInspector({ selectedId }: Props) {
             </button>
           )}
         </div>
-        <div className="bg-[#fafaf9] border border-app-border rounded-md overflow-auto max-h-[60vh]">
+        <div className="bg-[#fafaf9] dark:bg-slate-800 border border-app-border dark:border-slate-600 rounded-md overflow-auto max-h-[60vh]">
           <table className="w-full text-[12px] leading-relaxed font-mono table-fixed">
             <tbody>
               {visible.map((line, i) => (
-                <tr key={i} className="hover:bg-blue-50/30">
+                <tr key={i} className="hover:bg-blue-50/30 dark:hover:bg-blue-900/20">
                   <td className="line-number py-px select-none">{i + 1}</td>
-                  <td className="py-px pr-3 text-app-text whitespace-pre-wrap break-all">
+                  <td className="py-px pr-3 text-app-text dark:text-slate-300 whitespace-pre-wrap break-all">
                     {line || " "}
                   </td>
                 </tr>
@@ -199,7 +203,7 @@ export default function PromptInspector({ selectedId }: Props) {
             </tbody>
           </table>
           {hidden > 0 && (
-            <div className="px-4 py-2 text-[11px] text-app-muted border-t border-app-border bg-gray-50">
+            <div className="px-4 py-2 text-[12px] text-app-muted dark:text-slate-400 border-t border-app-border dark:border-slate-600 bg-gray-50 dark:bg-slate-900">
               ... 还有 {hidden} 行（{fmtK(text.length)} 字符）
             </div>
           )}
@@ -210,15 +214,19 @@ export default function PromptInspector({ selectedId }: Props) {
 
   if (!selectedId) {
     return (
-      <div className="flex items-center justify-center h-full text-app-muted text-[13px]">
+      <div className="flex items-center justify-center h-full text-app-muted dark:text-slate-400 text-[13px]">
         选择左侧请求查看提示词组成
       </div>
     );
   }
 
+  if (loading) {
+    return <ContentSkeleton rows={8} />;
+  }
+
   if (!context) {
     return (
-      <div className="flex items-center justify-center h-full text-app-muted text-[13px]">
+      <div className="flex items-center justify-center h-full text-app-muted dark:text-slate-400 text-[13px]">
         加载中...
       </div>
     );
@@ -227,7 +235,7 @@ export default function PromptInspector({ selectedId }: Props) {
   return (
     <div className="flex h-full">
       {/* Left: Tree */}
-      <div className="w-72 shrink-0 border-r border-app-border overflow-y-auto bg-app-sidebar/50">
+      <div className="w-72 shrink-0 border-r border-app-border dark:border-slate-700 overflow-y-auto bg-app-sidebar/50 dark:bg-slate-800/50">
         {(Object.keys(tree) as (keyof typeof tree)[]).map((group) => {
           const nodes = tree[group];
           if (nodes.length === 0) return null;
@@ -238,16 +246,16 @@ export default function PromptInspector({ selectedId }: Props) {
             <div key={group} className="mb-1">
               <button
                 onClick={() => toggleGroup(group)}
-                className="w-full flex items-center gap-1.5 px-3 py-2 text-[12px] font-semibold text-app-text hover:bg-black/[0.03] transition-colors text-left"
+                className="w-full flex items-center gap-1.5 px-3 py-2 text-[12px] font-semibold text-app-text dark:text-slate-200 hover:bg-black/[0.03] dark:hover:bg-white/[0.03] transition-colors text-left"
               >
                 {isExpanded ? (
-                  <ChevronDown className="w-3.5 h-3.5 text-app-muted shrink-0" />
+                  <ChevronDown className="w-3.5 h-3.5 text-app-muted dark:text-slate-400 shrink-0" />
                 ) : (
-                  <ChevronRight className="w-3.5 h-3.5 text-app-muted shrink-0" />
+                  <ChevronRight className="w-3.5 h-3.5 text-app-muted dark:text-slate-400 shrink-0" />
                 )}
                 <span className="text-[13px]">{meta.icon}</span>
                 <span>{meta.label}</span>
-                <span className="text-[10px] text-app-subtle font-normal ml-auto">
+                <span className="text-[11px] text-app-subtle dark:text-slate-500 font-normal ml-auto">
                   {nodes.length}
                 </span>
               </button>
@@ -259,16 +267,16 @@ export default function PromptInspector({ selectedId }: Props) {
                       onClick={() => setSelectedNode(node)}
                       className={`w-full flex items-center gap-1.5 pl-9 pr-3 py-1.5 text-[13px] transition-colors text-left ${
                         selectedNode?.key === node.key
-                          ? "bg-blue-50 text-app-accent font-medium"
-                          : "text-app-muted hover:text-app-text hover:bg-black/[0.03]"
+                          ? "bg-blue-50 dark:bg-blue-900/20 text-app-accent dark:text-blue-400 font-medium"
+                          : "text-app-muted dark:text-slate-400 hover:text-app-text dark:hover:text-slate-200 hover:bg-black/[0.03] dark:hover:bg-white/[0.03]"
                       }`}
                     >
-                      <span className="shrink-0 text-app-subtle text-[10px]">
+                      <span className="shrink-0 text-app-subtle dark:text-slate-500 text-[11px]">
                         {node.isFixed ? "●" : "○"}
                       </span>
                       <span className="flex-1 truncate">{node.label}</span>
                       {node.tokens !== undefined && (
-                        <span className="text-[10px] text-app-subtle font-mono shrink-0">
+                        <span className="text-[11px] text-app-subtle dark:text-slate-500 font-mono shrink-0">
                           {fmtK(node.tokens)}
                         </span>
                       )}
@@ -282,40 +290,40 @@ export default function PromptInspector({ selectedId }: Props) {
       </div>
 
       {/* Right: Content */}
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-6 bg-app-bg dark:bg-slate-900">
         {selectedNode ? (
           <div>
             <div className="mb-6">
-              <h2 className="text-[16px] font-semibold text-app-text mb-3">
+              <h2 className="text-[16px] font-semibold text-app-text dark:text-slate-100 mb-3">
                 {selectedNode.label}
               </h2>
               <div className="grid grid-cols-2 gap-2 text-[13px]">
                 {selectedNode.tokens !== undefined && (
-                  <div className="px-3 py-2 bg-app-card rounded-lg border border-app-border">
-                    <div className="text-app-muted text-[11px]">Tokens</div>
-                    <div className="font-mono text-app-text font-medium mt-0.5">
+                  <div className="px-3 py-2 bg-app-card dark:bg-slate-700 rounded-lg border border-app-border dark:border-slate-600">
+                    <div className="text-app-muted dark:text-slate-400 text-[12px]">Tokens</div>
+                    <div className="font-mono text-app-text dark:text-slate-100 font-medium mt-0.5">
                       ~{fmtK(selectedNode.tokens)}
                     </div>
                   </div>
                 )}
                 {selectedNode.content && (
-                  <div className="px-3 py-2 bg-app-card rounded-lg border border-app-border">
-                    <div className="text-app-muted text-[11px]">字符</div>
-                    <div className="font-mono text-app-text font-medium mt-0.5">
+                  <div className="px-3 py-2 bg-app-card dark:bg-slate-700 rounded-lg border border-app-border dark:border-slate-600">
+                    <div className="text-app-muted dark:text-slate-400 text-[12px]">字符</div>
+                    <div className="font-mono text-app-text dark:text-slate-100 font-medium mt-0.5">
                       {fmtK(selectedNode.content.length)}
                     </div>
                   </div>
                 )}
                 {selectedNode.source && (
-                  <div className="px-3 py-2 bg-app-card rounded-lg border border-app-border col-span-2">
-                    <div className="text-app-muted text-[11px]">来源</div>
-                    <div className="font-mono text-app-text font-medium text-[11px] truncate mt-0.5">
+                  <div className="px-3 py-2 bg-app-card dark:bg-slate-700 rounded-lg border border-app-border dark:border-slate-600 col-span-2">
+                    <div className="text-app-muted dark:text-slate-400 text-[12px]">来源</div>
+                    <div className="font-mono text-app-text dark:text-slate-100 font-medium text-[12px] truncate mt-0.5">
                       {selectedNode.source}
                     </div>
                   </div>
                 )}
                 {selectedNode.isFixed && (
-                  <div className="mt-1 text-[11px] text-app-muted col-span-2">
+                  <div className="mt-1 text-[12px] text-app-muted dark:text-slate-400 col-span-2">
                     此内容为固定模板，每次请求均包含
                   </div>
                 )}
@@ -325,18 +333,18 @@ export default function PromptInspector({ selectedId }: Props) {
             {renderContent(selectedNode.content)}
 
             {!selectedNode.content && (
-              <div className="flex items-center justify-center py-16 text-app-muted text-[13px]">
+              <div className="flex items-center justify-center py-16 text-app-muted dark:text-slate-400 text-[13px]">
                 <div className="text-center">
-                  <FileText className="w-6 h-6 mx-auto mb-2 text-app-subtle" />
+                  <FileText className="w-6 h-6 mx-auto mb-2 text-app-subtle dark:text-slate-600" />
                   此节点无详细内容
                 </div>
               </div>
             )}
           </div>
         ) : (
-          <div className="flex items-center justify-center h-full text-app-muted text-[13px]">
+          <div className="flex items-center justify-center h-full text-app-muted dark:text-slate-400 text-[13px]">
             <div className="text-center">
-              <FileText className="w-6 h-6 mx-auto mb-2 text-app-subtle" />
+              <FileText className="w-6 h-6 mx-auto mb-2 text-app-subtle dark:text-slate-600" />
               点击左侧节点查看提示词内容
             </div>
           </div>

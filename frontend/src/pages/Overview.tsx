@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
 import { fetchRequestContext, type ContextResponse } from "../api/client";
 import { fmtK } from "../lib/utils";
+import { cva, type VariantProps } from "class-variance-authority";
 import { AlertTriangle, CheckCircle, XCircle, FileText, Brain, Zap, Wrench, BookOpen, Globe, FolderOpen, ArrowRight, Bot, Link2, Plug } from "lucide-react";
+import { ContentSkeleton } from "../components/Skeleton";
 
 interface Props {
   selectedId: number | null;
@@ -15,72 +17,84 @@ interface LoadedItem {
   icon: React.ReactNode;
 }
 
-function ConceptCard({ icon, name, tag, desc, location }: {
+// ── 统一 ConceptCard（cva） ──
+
+const conceptCardVariants = cva(
+  "rounded-lg border transition-colors",
+  {
+    variants: {
+      variant: {
+        default:
+          "p-4 bg-app-card dark:bg-slate-700 border-app-border dark:border-slate-600 hover:border-app-accent/20 dark:hover:border-slate-500",
+        wide:
+          "p-4 bg-app-card dark:bg-slate-700 border-app-border dark:border-slate-600 hover:border-app-accent/20 dark:hover:border-slate-500",
+        highlight:
+          "p-5 bg-gradient-to-r from-app-accent/[0.03] to-transparent dark:from-blue-500/5 dark:to-transparent border-app-accent/20 dark:border-blue-500/20 hover:border-app-accent/30 dark:hover:border-blue-500/30",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+    },
+  }
+);
+
+const tagVariants = cva(
+  "text-[12px] px-1.5 py-0.5 rounded-full font-medium",
+  {
+    variants: {
+      variant: {
+        default: "bg-app-accent/10 dark:bg-blue-500/15 text-app-accent dark:text-blue-400",
+        wide: "bg-app-accent/10 dark:bg-blue-500/15 text-app-accent dark:text-blue-400",
+        highlight: "bg-app-accent dark:bg-blue-500 text-white",
+      },
+    },
+    defaultVariants: {
+      variant: "default",
+    },
+  }
+);
+
+interface ConceptCardProps extends VariantProps<typeof conceptCardVariants> {
   icon: React.ReactNode;
   name: string;
   tag: string;
   desc: string;
   location: string;
-}) {
+}
+
+function ConceptCard({ icon, name, tag, desc, location, variant = "default" }: ConceptCardProps) {
+  const isHighlight = variant === "highlight";
   return (
-    <div className="p-4 bg-app-card rounded-lg border border-app-border hover:border-app-accent/20 transition-colors">
+    <div className={conceptCardVariants({ variant })}>
       <div className="flex items-center gap-2 mb-2">
-        <div className="text-app-muted">{icon}</div>
-        <span className="text-[13px] font-semibold text-app-text">{name}</span>
-        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-app-accent/10 text-app-accent font-medium">{tag}</span>
+        <div className={isHighlight ? "text-app-accent dark:text-blue-400" : "text-app-muted dark:text-slate-400"}>
+          {icon}
+        </div>
+        <span className={`font-semibold text-app-text dark:text-slate-100 ${isHighlight ? "text-[14px]" : "text-[13px]"}`}>
+          {name}
+        </span>
+        <span className={tagVariants({ variant })}>{tag}</span>
       </div>
-      <p className="text-[11px] text-app-muted leading-relaxed mb-2">{desc}</p>
-      <div className="text-[10px] text-app-subtle font-mono">{location}</div>
+      <p className="text-app-muted dark:text-slate-400 leading-relaxed mb-2 text-[12px]">
+        {desc}
+      </p>
+      <div className="text-[12px] text-app-subtle dark:text-slate-500 font-mono">{location}</div>
     </div>
   );
 }
 
-function ConceptCardWide({ icon, name, tag, desc, location }: {
-  icon: React.ReactNode;
-  name: string;
-  tag: string;
-  desc: string;
-  location: string;
-}) {
-  return (
-    <div className="p-4 bg-app-card rounded-lg border border-app-border hover:border-app-accent/20 transition-colors">
-      <div className="flex items-center gap-2 mb-2">
-        <div className="text-app-muted">{icon}</div>
-        <span className="text-[13px] font-semibold text-app-text">{name}</span>
-        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-app-accent/10 text-app-accent font-medium">{tag}</span>
-      </div>
-      <p className="text-[11px] text-app-muted leading-relaxed mb-2">{desc}</p>
-      <div className="text-[10px] text-app-subtle font-mono">{location}</div>
-    </div>
-  );
-}
-
-function ConceptCardHighlight({ icon, name, tag, desc, location }: {
-  icon: React.ReactNode;
-  name: string;
-  tag: string;
-  desc: string;
-  location: string;
-}) {
-  return (
-    <div className="p-5 bg-gradient-to-r from-app-accent/[0.03] to-transparent rounded-lg border border-app-accent/20 hover:border-app-accent/30 transition-colors">
-      <div className="flex items-center gap-2 mb-2">
-        <div className="text-app-accent">{icon}</div>
-        <span className="text-[14px] font-semibold text-app-text">{name}</span>
-        <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-app-accent text-white font-medium">{tag}</span>
-      </div>
-      <p className="text-[12px] text-app-muted leading-relaxed mb-2">{desc}</p>
-      <div className="text-[10px] text-app-subtle font-mono">{location}</div>
-    </div>
-  );
-}
+// ── Page ──
 
 export default function Overview({ selectedId }: Props) {
   const [context, setContext] = useState<ContextResponse | null>(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (!selectedId) return;
-    fetchRequestContext(selectedId).then(setContext);
+    setLoading(true);
+    fetchRequestContext(selectedId)
+      .then(setContext)
+      .finally(() => setLoading(false));
   }, [selectedId]);
 
   if (!selectedId) {
@@ -88,8 +102,8 @@ export default function Overview({ selectedId }: Props) {
       <div className="p-6 max-w-3xl">
         {/* Header */}
         <div className="mb-8">
-          <h2 className="text-[16px] font-semibold mb-1 text-app-text">Agent Context 构成</h2>
-          <p className="text-[12px] text-app-muted">
+          <h2 className="text-[16px] font-semibold mb-1 text-app-text dark:text-slate-100">Agent Context 构成</h2>
+          <p className="text-[12px] text-app-muted dark:text-slate-400">
             AI Agent 的上下文由这些部分组成。每次请求，它们被打包进 System Prompt 发送给模型。
           </p>
         </div>
@@ -142,7 +156,8 @@ export default function Overview({ selectedId }: Props) {
 
         {/* MCP — highlight card */}
         <div className="mb-6">
-          <ConceptCardHighlight
+          <ConceptCard
+            variant="highlight"
             icon={<Plug className="w-4 h-4" />}
             name="MCP"
             tag="核心扩展"
@@ -153,7 +168,8 @@ export default function Overview({ selectedId }: Props) {
 
         {/* Built-in Tools */}
         <div className="mb-6">
-          <ConceptCardWide
+          <ConceptCard
+            variant="wide"
             icon={<Wrench className="w-4 h-4" />}
             name="内置工具"
             tag="基础能力"
@@ -163,14 +179,14 @@ export default function Overview({ selectedId }: Props) {
         </div>
 
         {/* Global vs Project */}
-        <div className="mb-6 p-4 bg-app-card rounded-lg border border-app-border">
-          <h3 className="text-[13px] font-semibold mb-3 text-app-text">全局 vs 项目 — 作用范围</h3>
+        <div className="mb-6 p-4 bg-app-card dark:bg-slate-700 rounded-lg border border-app-border dark:border-slate-600">
+          <h3 className="text-[13px] font-semibold mb-3 text-app-text dark:text-slate-100">全局 vs 项目 — 作用范围</h3>
           <div className="grid grid-cols-2 gap-4">
             <div className="flex gap-2">
-              <Globe className="w-4 h-4 text-app-muted shrink-0 mt-0.5" />
+              <Globe className="w-4 h-4 text-app-muted dark:text-slate-400 shrink-0 mt-0.5" />
               <div>
-                <div className="text-[12px] font-medium text-app-text">全局 ~/.claude/</div>
-                <div className="text-[11px] text-app-muted mt-0.5">
+                <div className="text-[12px] font-medium text-app-text dark:text-slate-100">全局 ~/.claude/</div>
+                <div className="text-[12px] text-app-muted dark:text-slate-400 mt-0.5">
                   用户级配置，对本机所有项目生效。
                   <br />
                   含：rules、skills、memory、MCP 配置
@@ -178,10 +194,10 @@ export default function Overview({ selectedId }: Props) {
               </div>
             </div>
             <div className="flex gap-2">
-              <FolderOpen className="w-4 h-4 text-app-muted shrink-0 mt-0.5" />
+              <FolderOpen className="w-4 h-4 text-app-muted dark:text-slate-400 shrink-0 mt-0.5" />
               <div>
-                <div className="text-[12px] font-medium text-app-text">项目 .claude/</div>
-                <div className="text-[11px] text-app-muted mt-0.5">
+                <div className="text-[12px] font-medium text-app-text dark:text-slate-100">项目 .claude/</div>
+                <div className="text-[12px] text-app-muted dark:text-slate-400 mt-0.5">
                   项目级配置，仅当前项目生效，
                   <br />
                   会与全局配置合并（项目优先）
@@ -192,7 +208,7 @@ export default function Overview({ selectedId }: Props) {
         </div>
 
         {/* CTA */}
-        <div className="flex items-center gap-2 text-[12px] text-app-muted">
+        <div className="flex items-center gap-2 text-[12px] text-app-muted dark:text-slate-400">
           <ArrowRight className="w-3.5 h-3.5" />
           点击左侧请求列表，查看实际上下文注入情况
         </div>
@@ -200,9 +216,13 @@ export default function Overview({ selectedId }: Props) {
     );
   }
 
+  if (loading) {
+    return <ContentSkeleton rows={4} />;
+  }
+
   if (!context) {
     return (
-      <div className="flex items-center justify-center h-full text-app-muted text-[13px]">
+      <div className="flex items-center justify-center h-full text-app-muted dark:text-slate-400 text-[13px]">
         加载中...
       </div>
     );
@@ -278,7 +298,7 @@ export default function Overview({ selectedId }: Props) {
       case "truncated":
         return <AlertTriangle className="w-4 h-4 text-app-amber" />;
       default:
-        return <XCircle className="w-4 h-4 text-app-subtle" />;
+        return <XCircle className="w-4 h-4 text-app-subtle dark:text-slate-500" />;
     }
   };
 
@@ -295,8 +315,8 @@ export default function Overview({ selectedId }: Props) {
   return (
     <div className="p-6 max-w-3xl">
       <div className="mb-6">
-        <h2 className="text-[15px] font-semibold mb-1 text-app-text">已加载上下文</h2>
-        <p className="text-[12px] text-app-muted">AI 到底拿到了什么？</p>
+        <h2 className="text-[15px] font-semibold mb-1 text-app-text dark:text-slate-100">已加载上下文</h2>
+        <p className="text-[12px] text-app-muted dark:text-slate-400">AI 到底拿到了什么？</p>
       </div>
 
       {/* Loaded Items */}
@@ -304,14 +324,14 @@ export default function Overview({ selectedId }: Props) {
         {loadedItems.map((item) => (
           <div
             key={item.name}
-            className="flex items-center gap-3 px-4 py-3 bg-app-card rounded-lg border border-app-border"
+            className="flex items-center gap-3 px-4 py-3 bg-app-card dark:bg-slate-700 rounded-lg border border-app-border dark:border-slate-600"
           >
-            <div className="text-app-muted">{item.icon}</div>
+            <div className="text-app-muted dark:text-slate-400">{item.icon}</div>
             <div className="flex-1 min-w-0">
-              <div className="text-[13px] font-medium text-app-text">{item.name}</div>
-              <div className="text-[11px] text-app-muted truncate">{item.source}</div>
+              <div className="text-[13px] font-medium text-app-text dark:text-slate-100">{item.name}</div>
+              <div className="text-[12px] text-app-muted dark:text-slate-400 truncate">{item.source}</div>
             </div>
-            <div className="text-[12px] text-app-muted font-mono">
+            <div className="text-[12px] text-app-muted dark:text-slate-400 font-mono">
               {item.status === "loaded" ? `${fmtK(item.tokens)} tokens` : "—"}
             </div>
             <div>{statusIcon(item.status)}</div>
@@ -321,8 +341,8 @@ export default function Overview({ selectedId }: Props) {
 
       {/* Context Usage */}
       <div className="mb-8">
-        <h3 className="text-[13px] font-semibold mb-3 text-app-text">上下文占用</h3>
-        <div className="flex h-2 rounded-full overflow-hidden bg-gray-100 mb-3">
+        <h3 className="text-[13px] font-semibold mb-3 text-app-text dark:text-slate-100">上下文占用</h3>
+        <div className="flex h-2 rounded-full overflow-hidden bg-gray-100 dark:bg-slate-600 mb-3">
           {usageItems.map((item, i) => (
             <div
               key={i}
@@ -337,15 +357,15 @@ export default function Overview({ selectedId }: Props) {
             <div key={i} className="flex justify-between text-[12px]">
               <div className="flex items-center gap-2">
                 <span className={`w-2 h-2 rounded-sm ${BAR_COLORS[i % BAR_COLORS.length]}`} />
-                <span className="text-app-muted">{item.label}</span>
+                <span className="text-app-muted dark:text-slate-400">{item.label}</span>
               </div>
-              <span className="text-app-muted font-mono">
+              <span className="text-app-muted dark:text-slate-400 font-mono">
                 ~{fmtK(item.tokens)} tokens ({item.pct.toFixed(0)}%)
               </span>
             </div>
           ))}
         </div>
-        <div className="mt-1 text-[10px] text-app-subtle text-right">
+        <div className="mt-1 text-[12px] text-app-subtle dark:text-slate-500 text-right">
           总计 ~{fmtK(context.total_tokens_estimate)} tokens
         </div>
       </div>
@@ -353,12 +373,12 @@ export default function Overview({ selectedId }: Props) {
       {/* Warnings */}
       {warnings.length > 0 && (
         <div>
-          <h3 className="text-[13px] font-semibold mb-3 text-app-amber">警告</h3>
+          <h3 className="text-[13px] font-semibold mb-3 text-app-amber dark:text-amber-400">警告</h3>
           <div className="space-y-2">
             {warnings.map((w, i) => (
               <div
                 key={i}
-                className="flex items-start gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-lg text-[12px] text-app-amber"
+                className="flex items-start gap-2 px-3 py-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg text-[12px] text-app-amber dark:text-amber-400"
               >
                 <AlertTriangle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
                 {w}

@@ -4,14 +4,27 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  @apply bg-app-bg text-app-text antialiased font-sans;
+@layer base {
+  body {
+    @apply bg-app-bg text-app-text antialiased font-sans;
+  }
+
+  /* Dark mode base */
+  .dark body,
+  body.dark {
+    @apply bg-slate-900 text-slate-100;
+  }
 }
 
 /* Scrollbar */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { @apply bg-app-border rounded-sm; }
+::-webkit-scrollbar-thumb {
+  @apply bg-app-border rounded-sm;
+}
+.dark ::-webkit-scrollbar-thumb {
+  @apply bg-slate-600 rounded-sm;
+}
 
 /* Code areas */
 pre, code {
@@ -25,4 +38,7 @@ pre, code {
   min-width: 3ch;
   text-align: right;
   padding-right: 12px;
+}
+.dark .line-number {
+  color: #64748b;
 }
