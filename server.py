@@ -188,8 +188,8 @@ def _smart_system_label(text, index):
     return f"System #{index+1}", False
 
 
-def _extract_breakdown(body, messages):
-    """Extract detailed breakdown: CLAUDE.md, Rules, Memory, Skills, History, etc."""
+def _extract_breakdown(body, messages, response=None):
+    """Extract detailed breakdown: CLAUDE.md, Rules, Memory, Skills, History, Tool calls, Response text, etc."""
     breakdown = {
         "claude_md": None,
         "rules": [],
@@ -197,6 +197,9 @@ def _extract_breakdown(body, messages):
         "skills": [],
         "history_turns": 0,
         "tool_results": [],
+        "tool_calls": [],
+        "thinking_count": 0,
+        "response_text": "",
         "model_params": {},
     }
 
@@ -287,20 +290,52 @@ def _extract_breakdown(body, messages):
             turn_count += 1
     breakdown["history_turns"] = turn_count
 
-    # Extract tool results
+    # Extract tool results (and tool calls from assistant messages)
     for msg in messages:
-        if msg.get("role") != "user":
-            continue
         content = msg.get("content", "")
         if isinstance(content, list):
             for item in content:
-                if isinstance(item, dict) and item.get("type") == "tool_result":
+                if not isinstance(item, dict):
+                    continue
+                t = item.get("type", "")
+                if t == "tool_result" and msg.get("role") == "user":
                     tr_content = item.get("content", "")
                     preview = tr_content[:100] if isinstance(tr_content, str) else str(tr_content)[:100]
                     breakdown["tool_results"].append({
                         "tool_use_id": item.get("tool_use_id", ""),
                         "preview": preview,
                     })
+                elif t == "tool_use" and msg.get("role") == "assistant":
+                    inp = item.get("input", {})
+                    inp_preview = json.dumps(inp, ensure_ascii=False)[:200] if inp else ""
+                    breakdown["tool_calls"].append({
+                        "name": item.get("name", "?"),
+                        "tool_use_id": item.get("id", ""),
+                        "input_preview": inp_preview,
+                    })
+                elif t == "thinking" and msg.get("role") == "assistant":
+                    breakdown["thinking_count"] += 1
+
+    # Extract response text from streaming events
+    if response and isinstance(response, dict):
+        resp_body = response.get("body", {})
+        if isinstance(resp_body, dict):
+            if resp_body.get("_streaming") and isinstance(resp_body.get("events"), list):
+                parts = []
+                for ev in resp_body["events"]:
+                    if isinstance(ev, dict):
+                        delta = ev.get("delta", {})
+                        if isinstance(delta, dict) and delta.get("type") == "text_delta":
+                            parts.append(delta.get("text", ""))
+                breakdown["response_text"] = "".join(parts)
+            elif "content" in resp_body:
+                content = resp_body["content"]
+                if isinstance(content, list):
+                    texts = []
+                    for item in content:
+                        if isinstance(item, dict) and item.get("type") == "text":
+                            texts.append(item.get("text", ""))
+                    breakdown["response_text"] = "".join(texts)
 
     return breakdown
 
@@ -353,27 +388,64 @@ def api_request_context(record_id):
         content = msg.get("content", "")
         if isinstance(content, list):
             text = json.dumps(content, ensure_ascii=False)
+            # 分析消息内容类型
+            msg_types = []
+            for item in content:
+                if isinstance(item, dict):
+                    t = item.get("type", "")
+                    if t == "tool_use":
+                        msg_types.append(item.get("name", "tool"))
+                    elif t == "tool_result":
+                        msg_types.append("tool_result")
+                    elif t == "thinking":
+                        msg_types.append("思考")
+                    elif t == "text":
+                        txt = item.get("text", "")
+                        if "<system-reminder>" in txt:
+                            msg_types.append("context")
+                        else:
+                            msg_types.append("text")
         elif isinstance(content, str):
             text = content
+            msg_types = ["text"]
         else:
             text = str(content)
+            msg_types = []
 
-        # Smart label for messages
-        label = f"[{role}] Message #{i+1}"
+        # Smart label — 区分提问、工具调用、思考、回复等
+        label = f"[{role}] #{i+1}"
         is_fixed = False
-        if role == "user" and "system-reminder" in text:
-            label = "[user] CLAUDE.md + Memory + Rules"
-        elif role == "user" and "tool_result" in text:
-            label = "[user] Tool Result"
-        elif role == "user" and "stepped away" in text:
-            label = "[user] Recap Request"
-        elif role == "system" and "Available agent" in text:
-            label = "[system] Agent 类型 + Skills 列表（半固定）"
-            is_fixed = True
-        elif role == "assistant" and "tool_use" in text:
-            label = "[assistant] Tool Call"
+        if role == "user":
+            if "system-reminder" in text:
+                label = "[user] 上下文注入"
+            elif "tool_result" in text:
+                label = "[user] 工具结果"
+            elif "stepped away" in text:
+                label = "[user] Recap"
+            else:
+                # 用户提问 — 取前30字做预览
+                preview = ""
+                for item in (content if isinstance(content, list) else []):
+                    if isinstance(item, dict) and item.get("type") == "text":
+                        t = item.get("text", "")
+                        if not t.startswith("<"):
+                            preview = t[:30]
+                            break
+                label = f"[user] {preview}…" if preview else "[user] 提问"
         elif role == "assistant":
-            label = "[assistant] Response"
+            if "tool_use" in str(msg_types):
+                tools = [x for x in msg_types if x not in ("text", "思考", "tool_result", "context")]
+                label = f"[assistant] 调用 {', '.join(tools[:3])}"
+            elif "thinking" in str(msg_types):
+                label = "[assistant] 思考"
+            else:
+                label = "[assistant] 回复"
+        elif role == "system":
+            if "Available agent" in text:
+                label = "[system] Agent + Skills"
+                is_fixed = True
+            else:
+                label = "[system] 系统消息"
 
         sections.append({
             "type": "message",
@@ -400,7 +472,7 @@ def api_request_context(record_id):
     total_chars = sum(s["chars"] for s in sections)
 
     # === Detailed breakdown ===
-    breakdown = _extract_breakdown(body, messages)
+    breakdown = _extract_breakdown(body, messages, record.get("response", {}))
 
     return jsonify({
         "sections": sections,

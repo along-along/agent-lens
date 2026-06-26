@@ -130,7 +130,7 @@ data/requests.jsonl
 | 环境变量 | 默认值 | 说明 |
 |---------|--------|------|
 | PROXY_PORT | 8899 | 代理监听端口 |
-| PROXY_TARGET | https://api.anthropic.com | 转发目标（改成你的实际 API） |
+| PROXY_TARGET | https://api.deepseek.com/anthropic | 转发目标（改成你的实际 API） |
 | VIEWER_PORT | 8900 | Web UI 端口 |
 
 ## 已知问题

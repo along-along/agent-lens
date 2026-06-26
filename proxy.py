@@ -25,7 +25,7 @@ import requests as http_client
 
 # Config
 LISTEN_PORT = int(os.environ.get("PROXY_PORT", "8899"))
-TARGET_BASE = os.environ.get("PROXY_TARGET", "https://api.anthropic.com")
+TARGET_BASE = os.environ.get("PROXY_TARGET", "https://api.deepseek.com/anthropic")
 DATA_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data")
 JSONL_FILE = os.path.join(DATA_DIR, "requests.jsonl")
 

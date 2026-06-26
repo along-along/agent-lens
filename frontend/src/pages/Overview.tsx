@@ -2,8 +2,19 @@ import { useState, useEffect } from "react";
 import { fetchRequestContext, type ContextResponse } from "../api/client";
 import { fmtK } from "../lib/utils";
 import { cva, type VariantProps } from "class-variance-authority";
-import { AlertTriangle, CheckCircle, XCircle, FileText, Brain, Zap, Wrench, BookOpen, Globe, FolderOpen, ArrowRight, Bot, Link2, Plug } from "lucide-react";
+import { AlertTriangle, CheckCircle, XCircle, FileText, Brain, Zap, Wrench, BookOpen, Globe, FolderOpen } from "lucide-react";
 import { ContentSkeleton } from "../components/Skeleton";
+
+function StepBadge({ num, label }: { num: number; label: string }) {
+  return (
+    <div className="flex items-center gap-2 px-3 py-2 bg-app-card dark:bg-slate-700 border border-app-border dark:border-slate-600 rounded-lg">
+      <span className="w-7 h-7 rounded-full bg-app-accent dark:bg-blue-600 text-white text-[15px] font-bold flex items-center justify-center shrink-0">
+        {num}
+      </span>
+      <span className="text-[17px] font-medium text-app-text dark:text-slate-200">{label}</span>
+    </div>
+  );
+}
 
 interface Props {
   selectedId: number | null;
@@ -99,118 +110,50 @@ export default function Overview({ selectedId }: Props) {
 
   if (!selectedId) {
     return (
-      <div className="p-6 max-w-3xl">
-        {/* Header */}
-        <div className="mb-8">
-          <h2 className="text-[16px] font-semibold mb-1 text-app-text dark:text-slate-100">Agent Context 构成</h2>
-          <p className="text-[12px] text-app-muted dark:text-slate-400">
-            AI Agent 的上下文由这些部分组成。每次请求，它们被打包进 System Prompt 发送给模型。
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center max-w-lg px-6">
+          {/* Brand */}
+          <h1 className="text-[36px] font-bold tracking-tight text-app-text dark:text-slate-100 mb-2">
+            Agent<span className="text-app-accent dark:text-blue-400">Lens</span>
+            <span className="text-[18px] text-app-subtle dark:text-slate-500 font-normal ml-2">AI 探针</span>
+          </h1>
+          <p className="text-[18px] text-app-muted dark:text-slate-400 mb-8">
+            The DevTools for AI Agents
           </p>
-        </div>
 
-        {/* Concept Cards — 2x3 grid */}
-        <div className="grid grid-cols-2 gap-3 mb-6">
-          <ConceptCard
-            icon={<FileText className="w-4 h-4" />}
-            name="CLAUDE.md"
-            tag="项目指引"
-            desc="项目根目录入口文件，定义背景、架构、约定。Agent 首先读取它。"
-            location="项目: ./CLAUDE.md"
-          />
-          <ConceptCard
-            icon={<BookOpen className="w-4 h-4" />}
-            name="Rules"
-            tag="行为规则"
-            desc="Markdown 规则文件，约束 Agent 行为、编码风格和工作方式。"
-            location="全局: ~/.claude/rules/ | 项目: .claude/rules/"
-          />
-          <ConceptCard
-            icon={<Brain className="w-4 h-4" />}
-            name="Memory"
-            tag="持久化记忆"
-            desc="跨会话记忆存储，Agent 自动检索相关上下文注入。"
-            location="项目: ./MEMORY.md"
-          />
-          <ConceptCard
-            icon={<Zap className="w-4 h-4" />}
-            name="Skills"
-            tag="技能模块"
-            desc="可复用技能包，封装特定工作流（PDF、PPT、飞书操作等）。"
-            location="全局: ~/.claude/skills/ | 项目: .claude/skills/"
-          />
-          <ConceptCard
-            icon={<Bot className="w-4 h-4" />}
-            name="Agent"
-            tag="智能体"
-            desc="Agent 类型与子 Agent 配置。定义谁在干活（主 Agent / Browser / CodeReview…）。"
-            location="系统配置 + 请求时声明"
-          />
-          <ConceptCard
-            icon={<Link2 className="w-4 h-4" />}
-            name="Hooks"
-            tag="执行钩子"
-            desc="生命周期拦截点：pre-tool / post-tool / notification 等，可编程修改 Agent 行为。"
-            location="全局: ~/.claude/hooks/ | 项目: .claude/hooks/"
-          />
-        </div>
+          {/* Value prop */}
+          <p className="text-[24px] text-app-text dark:text-slate-200 leading-relaxed mb-10">
+            看见 Agent 实际拿到了什么上下文，而不是猜测
+          </p>
 
-        {/* MCP — highlight card */}
-        <div className="mb-6">
-          <ConceptCard
-            variant="highlight"
-            icon={<Plug className="w-4 h-4" />}
-            name="MCP"
-            tag="核心扩展"
-            desc="Model Context Protocol — Agent 连接外部世界的桥梁。通过 MCP Server 操控浏览器、访问数据库、调用第三方 API。是 Agent 能力边界的关键扩展机制。"
-            location="配置: mcp.json / ~/.claude/mcp.json"
-          />
-        </div>
-
-        {/* Built-in Tools */}
-        <div className="mb-6">
-          <ConceptCard
-            variant="wide"
-            icon={<Wrench className="w-4 h-4" />}
-            name="内置工具"
-            tag="基础能力"
-            desc="Agent 原生工具集（Read、Write、Bash、Grep、Glob、WebSearch…），每次请求随工具定义一起发送。"
-            location="系统内置 29 个工具"
-          />
-        </div>
-
-        {/* Global vs Project */}
-        <div className="mb-6 p-4 bg-app-card dark:bg-slate-700 rounded-lg border border-app-border dark:border-slate-600">
-          <h3 className="text-[13px] font-semibold mb-3 text-app-text dark:text-slate-100">全局 vs 项目 — 作用范围</h3>
-          <div className="grid grid-cols-2 gap-4">
-            <div className="flex gap-2">
-              <Globe className="w-4 h-4 text-app-muted dark:text-slate-400 shrink-0 mt-0.5" />
-              <div>
-                <div className="text-[12px] font-medium text-app-text dark:text-slate-100">全局 ~/.claude/</div>
-                <div className="text-[12px] text-app-muted dark:text-slate-400 mt-0.5">
-                  用户级配置，对本机所有项目生效。
-                  <br />
-                  含：rules、skills、memory、MCP 配置
-                </div>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <FolderOpen className="w-4 h-4 text-app-muted dark:text-slate-400 shrink-0 mt-0.5" />
-              <div>
-                <div className="text-[12px] font-medium text-app-text dark:text-slate-100">项目 .claude/</div>
-                <div className="text-[12px] text-app-muted dark:text-slate-400 mt-0.5">
-                  项目级配置，仅当前项目生效，
-                  <br />
-                  会与全局配置合并（项目优先）
-                </div>
-              </div>
-            </div>
+          {/* 3 steps */}
+          <div className="flex items-center justify-center gap-3 mb-10">
+            <StepBadge num={1} label="拦截请求" />
+            <span className="text-app-subtle dark:text-slate-500 text-[26px]">→</span>
+            <StepBadge num={2} label="记录上下文" />
+            <span className="text-app-subtle dark:text-slate-500 text-[26px]">→</span>
+            <StepBadge num={3} label="可视化分析" />
           </div>
-        </div>
 
-        {/* CTA */}
-        <div className="flex items-center gap-2 text-[12px] text-app-muted dark:text-slate-400">
-          <ArrowRight className="w-3.5 h-3.5" />
-          点击左侧请求列表，查看实际上下文注入情况
+          {/* Checklist */}
+          <div className="text-left inline-block space-y-2 mb-8">
+            {[
+              "CLAUDE.md / Rules 是否生效",
+              "Skill 是否加载 · Memory 注入了什么",
+              "MCP 工具是否注册 · 上下文被什么占满",
+              "请求间上下文变化 · 原始请求/响应数据",
+            ].map((text) => (
+              <div key={text} className="flex items-center gap-2 text-[16px] text-app-muted dark:text-slate-400">
+                <span className="text-app-accent dark:text-blue-400 text-[13px]">✓</span>
+                {text}
+              </div>
+            ))}
+          </div>
+
+          {/* CTA */}
+          <p className="text-[15px] text-app-subtle dark:text-slate-500">
+            点击左侧请求列表开始探索
+          </p>
         </div>
       </div>
     );
@@ -290,6 +233,12 @@ export default function Overview({ selectedId }: Props) {
   if (!bd.memory) {
     warnings.push("未检测到 Memory，Agent 可能缺少记忆上下文");
   }
+  if (bd.tool_calls.length > 5) {
+    warnings.push(`本请求调用了 ${bd.tool_calls.length} 次工具，可能影响响应速度`);
+  }
+  if (bd.thinking_count > 0) {
+    warnings.push(`包含 ${bd.thinking_count} 段思考过程，上下文消耗较大`);
+  }
 
   const statusIcon = (status: string) => {
     switch (status) {
@@ -314,6 +263,38 @@ export default function Overview({ selectedId }: Props) {
 
   return (
     <div className="p-6 max-w-3xl">
+      {/* Conversation Summary */}
+      <div className="mb-6 p-4 bg-app-card dark:bg-slate-700 rounded-lg border border-app-border dark:border-slate-600">
+        <div className="flex items-center gap-2 mb-2">
+          <span className="text-[13px] font-semibold text-app-text dark:text-slate-100">对话摘要</span>
+          <span className="text-[11px] text-app-muted dark:text-slate-400">
+            {bd.history_turns} 轮 · {bd.tool_calls.length} 次工具调用 · {bd.thinking_count > 0 ? `${bd.thinking_count} 次思考` : ""}
+          </span>
+        </div>
+        {/* User question */}
+        {context.sections.some((s) => s.role === "user" && !s.label.includes("上下文") && !s.label.includes("工具结果") && !s.label.includes("Recap")) && (
+          <div className="text-[12px] text-app-text dark:text-slate-200 mb-2">
+            💬 {context.sections.find((s) => s.role === "user" && !s.label.includes("上下文") && !s.label.includes("工具结果") && !s.label.includes("Recap"))?.label.replace("[user] ", "")}
+          </div>
+        )}
+        {/* Tools called */}
+        {bd.tool_calls.length > 0 && (
+          <div className="flex flex-wrap gap-1 mb-2">
+            {bd.tool_calls.map((tc, i) => (
+              <span key={i} className="text-[11px] px-1.5 py-0.5 rounded bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-300 font-mono">
+                {tc.name}
+              </span>
+            ))}
+          </div>
+        )}
+        {/* Response preview */}
+        {bd.response_text && (
+          <div className="text-[12px] text-app-muted dark:text-slate-400 truncate">
+            {bd.response_text.slice(0, 120)}{bd.response_text.length > 120 ? "…" : ""}
+          </div>
+        )}
+      </div>
+
       <div className="mb-6">
         <h2 className="text-[15px] font-semibold mb-1 text-app-text dark:text-slate-100">已加载上下文</h2>
         <p className="text-[12px] text-app-muted dark:text-slate-400">AI 到底拿到了什么？</p>

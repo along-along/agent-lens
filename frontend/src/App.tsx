@@ -14,12 +14,14 @@ import {
   X,
   Wifi,
   WifiOff,
+  HelpCircle,
 } from "lucide-react";
 import Overview from "./pages/Overview";
 import PromptInspector from "./pages/PromptInspector";
 import ContextDiff from "./pages/ContextDiff";
 import ExecutionFlow from "./pages/ExecutionFlow";
 import RawData from "./pages/RawData";
+import ConceptsPage from "./pages/ConceptsPage";
 import { fetchRequests, type RequestSummary } from "./api/client";
 import { useTheme } from "./hooks/useTheme";
 import { RequestListSkeleton } from "./components/Skeleton";
@@ -157,6 +159,21 @@ export default function App() {
             Gitee
           </a>
           <span className="text-app-border dark:text-slate-600">·</span>
+          <NavLink
+            to="/concepts"
+            className={({ isActive }) =>
+              `flex items-center gap-1 px-2 py-0.5 text-[12px] rounded transition-colors ${
+                isActive
+                  ? "text-app-accent dark:text-blue-400"
+                  : "text-app-muted dark:text-slate-400 hover:text-app-text dark:hover:text-slate-200 hover:bg-black/[0.04] dark:hover:bg-white/5"
+              }`
+            }
+            title="Agent Context 概念说明"
+          >
+            <HelpCircle className="w-3 h-3" />
+            概念
+          </NavLink>
+          <span className="text-app-border dark:text-slate-600">·</span>
           <a
             href="https://my.feishu.cn/wiki/FlL6wIZVnioDQXkmStGcU9vwnge?fromScene=spaceOverview"
             target="_blank"
@@ -165,7 +182,7 @@ export default function App() {
             title="知识库"
           >
             <BookOpen className="w-3 h-3" />
-            知识库
+            Wiki
           </a>
 
           {/* Theme toggle */}
@@ -334,6 +351,10 @@ export default function App() {
             <Route
               path="/raw"
               element={<RawData selectedId={selectedId} />}
+            />
+            <Route
+              path="/concepts"
+              element={<ConceptsPage />}
             />
             <Route
               path="/flow"
