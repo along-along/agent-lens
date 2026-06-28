@@ -61,13 +61,6 @@ claude
 http://localhost:8900
 ```
 
-**前端开发模式**（修改 UI 时用，热更新）：
-
-```bash
-cd frontend && npm run dev    # Vite 开发服务器，自动代理 /api 到 Flask
-```
-
-Linux/Mac 用 `export` 替代 `$env:`。
 
 ## 功能
 
@@ -98,17 +91,7 @@ Linux/Mac 用 `export` 替代 `$env:`。
 - User → 思考 → 调用工具 → 结果 → 回复 全链路可视化
 - 点击节点查看输入 / 输出 / 耗时
 
-## 一个问题到底调了几次 API？
 
-以"今天厦门天气如何"为例，Claude Code 实际发了 3 次 API 调用：
-
-```
-[🔵 主请求]  用户问题 + 完整上下文 → Claude 决定调 WebSearch
-[🔍 工具调用] 精简 prompt + web_search 工具 → 执行搜索
-[🔵 主请求]  搜索结果塞回 messages → Claude 生成最终回答
-```
-
-这就是 Agent Loop 的运作方式——之前完全看不到，现在一清二楚。
 
 ## 数据存储
 
