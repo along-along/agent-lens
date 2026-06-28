@@ -3,30 +3,17 @@ import {
   fetchRequestContext,
   fetchRequests,
   type ContextResponse,
-  type ContextSection,
   type RequestSummary,
 } from "../api/client";
 import { fmtK } from "../lib/utils";
-import { Plus, Minus, Pencil, Scissors, GitCompare, CheckCircle, ChevronDown } from "lucide-react";
+import { Plus, Minus, Pencil, Scissors, GitCompare, CheckCircle, ChevronDown, Wrench, Brain } from "lucide-react";
 import { ContentSkeleton } from "../components/Skeleton";
 
 interface Props {
   selectedId: number | null;
 }
 
-interface DiffItem {
-  type: "added" | "removed" | "modified" | "truncated";
-  label: string;
-  detail: string;
-}
-
-interface SectionDiff {
-  label: string;
-  type: string;
-  currentChars: number;
-  prevChars: number;
-  delta: number;
-}
+const BAR_COLORS = ["bg-app-accent", "bg-emerald-500", "bg-amber-500", "bg-violet-500", "bg-rose-500", "bg-cyan-500", "bg-orange-500"];
 
 export default function ContextDiff({ selectedId }: Props) {
   const [currentCtx, setCurrentCtx] = useState<ContextResponse | null>(null);
@@ -35,38 +22,23 @@ export default function ContextDiff({ selectedId }: Props) {
   const [targetId, setTargetId] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
 
-  // Load request list
-  useEffect(() => {
-    fetchRequests().then((d) => setRequests(d.requests));
-  }, []);
+  useEffect(() => { fetchRequests().then((d) => setRequests(d.requests)); }, []);
 
-  // Auto-set target to previous request when selectedId changes
   useEffect(() => {
     if (!selectedId || requests.length === 0) return;
     const sorted = [...requests].sort((a, b) => a.id - b.id);
-    const currentIndex = sorted.findIndex((r) => r.id === selectedId);
-    if (currentIndex > 0) {
-      setTargetId(sorted[currentIndex - 1].id);
-    } else {
-      setTargetId(null);
-    }
+    const idx = sorted.findIndex((r) => r.id === selectedId);
+    setTargetId(idx > 0 ? sorted[idx - 1].id : null);
   }, [selectedId, requests]);
 
-  // Load current context
   useEffect(() => {
     if (!selectedId) return;
     setLoading(true);
-    fetchRequestContext(selectedId)
-      .then(setCurrentCtx)
-      .finally(() => setLoading(false));
+    fetchRequestContext(selectedId).then(setCurrentCtx).finally(() => setLoading(false));
   }, [selectedId]);
 
-  // Load target context
   useEffect(() => {
-    if (targetId === null) {
-      setPrevCtx(null);
-      return;
-    }
+    if (targetId === null) { setPrevCtx(null); return; }
     fetchRequestContext(targetId).then(setPrevCtx);
   }, [targetId]);
 
@@ -78,143 +50,92 @@ export default function ContextDiff({ selectedId }: Props) {
     );
   }
 
-  if (loading || !currentCtx) {
-    return <ContentSkeleton rows={5} />;
-  }
+  // ⚠️ All hooks MUST be called before any conditional return
 
-  const computeDiff = (): DiffItem[] => {
-    if (!prevCtx) return [];
-    const diff: DiffItem[] = [];
-    const currBd = currentCtx.breakdown;
-    const prevBd = prevCtx.breakdown;
-
-    // CLAUDE.md
-    if (currBd.claude_md && !prevBd.claude_md) {
-      diff.push({ type: "added", label: "+ CLAUDE.md", detail: currBd.claude_md.path.split(/[/\\]/).pop() || "" });
-    } else if (!currBd.claude_md && prevBd.claude_md) {
-      diff.push({ type: "removed", label: "- CLAUDE.md", detail: prevBd.claude_md.path.split(/[/\\]/).pop() || "" });
-    } else if (currBd.claude_md && prevBd.claude_md && currBd.claude_md.content !== prevBd.claude_md.content) {
-      diff.push({ type: "modified", label: "~ CLAUDE.md 内容变化", detail: `${fmtK(Math.round(prevBd.claude_md.chars / 4))} → ${fmtK(Math.round(currBd.claude_md.chars / 4))} tokens` });
-    }
-
-    // Memory
-    if (currBd.memory && !prevBd.memory) {
-      diff.push({ type: "added", label: "+ 记忆", detail: currBd.memory.path.split(/[/\\]/).pop() || "" });
-    } else if (!currBd.memory && prevBd.memory) {
-      diff.push({ type: "removed", label: "- 记忆", detail: prevBd.memory.path.split(/[/\\]/).pop() || "" });
-    } else if (currBd.memory && prevBd.memory && currBd.memory.content !== prevBd.memory.content) {
-      diff.push({ type: "modified", label: "~ 记忆内容变化", detail: `${fmtK(Math.round(prevBd.memory.chars / 4))} → ${fmtK(Math.round(currBd.memory.chars / 4))} tokens` });
-    }
-
-    // Skills
-    const newSkills = currBd.skills.filter((s) => !prevBd.skills.includes(s));
-    const removedSkills = prevBd.skills.filter((s) => !currBd.skills.includes(s));
-    newSkills.forEach((s) => diff.push({ type: "added", label: "+ 技能", detail: s }));
-    removedSkills.forEach((s) => diff.push({ type: "removed", label: "- 技能", detail: s }));
-
-    // Rules
-    const currPaths = currBd.rules.map((r) => r.path);
-    const prevPaths = prevBd.rules.map((r) => r.path);
-    currBd.rules.filter((r) => !prevPaths.includes(r.path)).forEach((r) =>
-      diff.push({ type: "added", label: "+ 规则", detail: r.path.split(/[/\\]/).pop() || "" })
-    );
-    prevBd.rules.filter((r) => !currPaths.includes(r.path)).forEach((r) =>
-      diff.push({ type: "removed", label: "- 规则", detail: r.path.split(/[/\\]/).pop() || "" })
-    );
-
-    // Context size
-    const tokensDelta = currentCtx.total_tokens_estimate - prevCtx.total_tokens_estimate;
-    if (tokensDelta > 1000) {
-      diff.push({ type: "modified", label: "~ 上下文增长", detail: `+${fmtK(tokensDelta)} tokens` });
-    } else if (tokensDelta < -1000) {
-      diff.push({ type: "truncated", label: "✂ 上下文缩减", detail: `${fmtK(Math.abs(tokensDelta))} tokens 被移除` });
-    }
-
-    // History turns
-    if (currBd.history_turns !== prevBd.history_turns) {
-      const delta = currBd.history_turns - prevBd.history_turns;
-      diff.push({ type: "modified", label: "~ 对话轮数", detail: `${prevBd.history_turns} → ${currBd.history_turns} 轮 (${delta >= 0 ? "+" : ""}${delta})` });
-    }
-
-    return diff;
-  };
-
-  // Compute section-level deltas
-  const sectionDiffs = useMemo<SectionDiff[]>(() => {
-    if (!prevCtx || !currentCtx) return [];
-
-    const currSections = currentCtx.sections;
-    const prevSections = prevCtx.sections;
-
-    // Match sections by label prefix
-    const diffs: SectionDiff[] = [];
-    const matchedPrev = new Set<number>();
-
-    for (const cs of currSections) {
-      // Find best match in prev
-      const prevIdx = prevSections.findIndex(
-        (ps, i) => !matchedPrev.has(i) && ps.type === cs.type && ps.label === cs.label
-      );
-      const prevChars = prevIdx >= 0 ? prevSections[prevIdx].chars : 0;
-      if (prevIdx >= 0) matchedPrev.add(prevIdx);
-      diffs.push({
-        label: cs.label,
-        type: cs.type,
-        currentChars: cs.chars,
-        prevChars,
-        delta: cs.chars - prevChars,
-      });
-    }
-
-    // Add removed sections
-    for (let i = 0; i < prevSections.length; i++) {
-      if (!matchedPrev.has(i)) {
-        diffs.push({
-          label: prevSections[i].label,
-          type: prevSections[i].type,
-          currentChars: 0,
-          prevChars: prevSections[i].chars,
-          delta: -prevSections[i].chars,
-        });
-      }
-    }
-
-    return diffs.filter((d) => Math.abs(d.delta) > 10); // Filter noise
+  // ── 统计 ──
+  const stats = useMemo(() => {
+    if (!currentCtx || !prevCtx) return { tokenDelta: 0, turnDelta: 0, toolCallDelta: 0, thinkingDelta: 0 };
+    return {
+      tokenDelta: currentCtx.total_tokens_estimate - prevCtx.total_tokens_estimate,
+      turnDelta: currentCtx.breakdown.history_turns - prevCtx.breakdown.history_turns,
+      toolCallDelta: currentCtx.breakdown.tool_calls.length - prevCtx.breakdown.tool_calls.length,
+      thinkingDelta: currentCtx.breakdown.thinking_count - prevCtx.breakdown.thinking_count,
+    };
   }, [currentCtx, prevCtx]);
 
-  const diff = computeDiff();
+  const { tokenDelta, turnDelta, toolCallDelta, thinkingDelta } = stats;
 
-  const diffIcon = (type: string) => {
-    switch (type) {
-      case "added": return <Plus className="w-3.5 h-3.5 text-app-green" />;
-      case "removed": return <Minus className="w-3.5 h-3.5 text-app-red" />;
-      case "modified": return <Pencil className="w-3.5 h-3.5 text-app-amber" />;
-      case "truncated": return <Scissors className="w-3.5 h-3.5 text-orange-500" />;
-    }
-  };
+  const newSections = useMemo(() => {
+    if (!currentCtx || !prevCtx) return [];
+    const prevLabels = new Set(prevCtx.sections.map((s) => s.label));
+    return currentCtx.sections.filter((s) => !prevLabels.has(s.label));
+  }, [currentCtx, prevCtx]);
 
-  const diffBg = (type: string) => {
-    switch (type) {
-      case "added": return "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800";
-      case "removed": return "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800";
-      case "modified": return "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800";
-      case "truncated": return "bg-orange-50 dark:bg-orange-900/20 border-orange-200 dark:border-orange-800";
-    }
-  };
+  const newToolCalls = useMemo(() => {
+    if (!currentCtx) return [];
+    if (!prevCtx) return currentCtx.breakdown.tool_calls;
+    const pb = prevCtx.breakdown;
+    const cb = currentCtx.breakdown;
+    const prevIds = new Set(pb.tool_calls.map((t) => t.tool_use_id));
+    return cb.tool_calls.filter((t) => !prevIds.has(t.tool_use_id));
+  }, [currentCtx, prevCtx]);
 
-  // Sorted requests for dropdown (newest first)
-  const sortedRequests = useMemo(
-    () => [...requests].sort((a, b) => b.id - a.id),
-    [requests]
-  );
+  const configChanges = useMemo(() => {
+    const changes: { icon: React.ReactNode; label: string; detail: string }[] = [];
+    if (!currentCtx || !prevCtx) return changes;
+    const cb = currentCtx.breakdown;
+    const pb = prevCtx.breakdown;
+
+    if (cb.claude_md && !pb.claude_md) changes.push({ icon: <Plus className="w-3.5 h-3.5 text-app-green" />, label: "CLAUDE.md 新增", detail: cb.claude_md.path.split(/[/\\]/).pop() || "" });
+    else if (!cb.claude_md && pb.claude_md) changes.push({ icon: <Minus className="w-3.5 h-3.5 text-app-red" />, label: "CLAUDE.md 移除", detail: pb.claude_md.path.split(/[/\\]/).pop() || "" });
+    else if (cb.claude_md && pb.claude_md && cb.claude_md.content !== pb.claude_md.content) changes.push({ icon: <Pencil className="w-3.5 h-3.5 text-app-amber" />, label: "CLAUDE.md 修改", detail: `${fmtK(Math.round(pb.claude_md.chars/4))} → ${fmtK(Math.round(cb.claude_md.chars/4))} tokens` });
+
+    if (cb.memory && !pb.memory) changes.push({ icon: <Plus className="w-3.5 h-3.5 text-app-green" />, label: "记忆 新增", detail: cb.memory.path.split(/[/\\]/).pop() || "" });
+    else if (!cb.memory && pb.memory) changes.push({ icon: <Minus className="w-3.5 h-3.5 text-app-red" />, label: "记忆 移除", detail: pb.memory.path.split(/[/\\]/).pop() || "" });
+    else if (cb.memory && pb.memory && cb.memory.content !== pb.memory.content) changes.push({ icon: <Pencil className="w-3.5 h-3.5 text-app-amber" />, label: "记忆 修改", detail: `${fmtK(Math.round(pb.memory.chars/4))} → ${fmtK(Math.round(cb.memory.chars/4))} tokens` });
+
+    const prevSkills = new Set(pb.skills.map((s) => s.name));
+    const currSkills = new Set(cb.skills.map((s) => s.name));
+    cb.skills.filter((s) => !prevSkills.has(s.name)).forEach((s) => changes.push({ icon: <Plus className="w-3.5 h-3.5 text-app-green" />, label: "技能 新增", detail: s.name }));
+    pb.skills.filter((s) => !currSkills.has(s.name)).forEach((s) => changes.push({ icon: <Minus className="w-3.5 h-3.5 text-app-red" />, label: "技能 移除", detail: s.name }));
+
+    const prevRules = new Set(pb.rules.map((r) => r.path));
+    cb.rules.filter((r) => !prevRules.has(r.path)).forEach((r) => changes.push({ icon: <Plus className="w-3.5 h-3.5 text-app-green" />, label: "规则 新增", detail: r.path.split(/[/\\]/).pop() || "" }));
+    pb.rules.filter((r) => !prevRules.has(r.path)).forEach((r) => changes.push({ icon: <Minus className="w-3.5 h-3.5 text-app-red" />, label: "规则 移除", detail: r.path.split(/[/\\]/).pop() || "" }));
+
+    if (cb.history_turns !== pb.history_turns) changes.push({ icon: <Pencil className="w-3.5 h-3.5 text-app-amber" />, label: "对话轮数", detail: `${pb.history_turns} → ${cb.history_turns} 轮` });
+    if (tokenDelta > 500) changes.push({ icon: <Pencil className="w-3.5 h-3.5 text-app-amber" />, label: "上下文增长", detail: `+${fmtK(tokenDelta)} tokens` });
+    else if (tokenDelta < -500) changes.push({ icon: <Scissors className="w-3.5 h-3.5 text-orange-500" />, label: "上下文缩减", detail: `${fmtK(Math.abs(tokenDelta))} tokens` });
+
+    return changes;
+  }, [currentCtx, prevCtx, tokenDelta]);
+
+  const barData = useMemo(() => {
+    const make = (ctx: ContextResponse) => ctx.sections.map((s, i) => ({
+      label: s.label.length > 25 ? s.label.slice(0, 25) + "…" : s.label,
+      chars: s.chars,
+      pct: ctx.total_chars > 0 ? (s.chars / ctx.total_chars) * 100 : 0,
+      color: BAR_COLORS[i % BAR_COLORS.length],
+    }));
+    return { prev: prevCtx ? make(prevCtx) : [], cur: currentCtx ? make(currentCtx) : [] };
+  }, [currentCtx, prevCtx]);
+
+  const sortedRequests = useMemo(() => [...requests].sort((a, b) => b.id - a.id), [requests]);
+
+  // ⚠️ Conditional returns only AFTER all hooks
+  if (loading || !currentCtx) return <ContentSkeleton rows={5} />;
 
   return (
     <div className="p-6 max-w-3xl">
-      <div className="mb-6">
-        <h2 className="text-[15px] font-semibold mb-1 text-app-text dark:text-slate-100">上下文对比</h2>
-        <p className="text-[12px] text-app-muted dark:text-slate-400">
-          当前请求 #{selectedId} vs 对比目标
-        </p>
+      {/* Header */}
+      <div className="flex items-center gap-3 mb-6">
+        <GitCompare className="w-5 h-5 text-app-accent dark:text-blue-400" />
+        <div>
+          <h2 className="text-[15px] font-semibold text-app-text dark:text-slate-100">上下文对比</h2>
+          <p className="text-[12px] text-app-muted dark:text-slate-400">
+            #{String(currentCtx.breakdown.model_params?.model || selectedId)} vs {prevCtx ? `#${targetId}` : "—"}
+          </p>
+        </div>
       </div>
 
       {/* Target selector */}
@@ -227,13 +148,9 @@ export default function ContextDiff({ selectedId }: Props) {
             className="w-full appearance-none px-3 py-2 pr-8 text-[13px] bg-app-card dark:bg-slate-700 border border-app-border dark:border-slate-600 rounded-lg text-app-text dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-app-accent/30 cursor-pointer"
           >
             <option value="">自动（上一请求）</option>
-            {sortedRequests
-              .filter((r) => r.id !== selectedId)
-              .map((r) => (
-                <option key={r.id} value={r.id}>
-                  #{r.id} — {r.timestamp?.slice(11, 19)} — {r.preview?.slice(0, 40) || r.model}
-                </option>
-              ))}
+            {sortedRequests.filter((r) => r.id !== selectedId).map((r) => (
+              <option key={r.id} value={r.id}>#{r.id} — {r.timestamp?.slice(11, 19)} — {r.preview?.slice(0, 40) || r.model}</option>
+            ))}
           </select>
           <ChevronDown className="absolute right-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-app-muted dark:text-slate-400 pointer-events-none" />
         </div>
@@ -243,102 +160,121 @@ export default function ContextDiff({ selectedId }: Props) {
         <div className="flex items-center justify-center py-16 text-app-muted dark:text-slate-400 text-[13px]">
           <div className="text-center">
             <GitCompare className="w-6 h-6 mx-auto mb-2 text-app-subtle dark:text-slate-600" />
-            当前请求为第一个请求，无可对比的上一个请求
+            当前请求为第一个请求，无可对比的上一请求
           </div>
-        </div>
-      )}
-
-      {prevCtx && diff.length === 0 && (
-        <div className="flex items-center gap-2 px-4 py-3 bg-app-card dark:bg-slate-700 rounded-lg border border-app-border dark:border-slate-600 text-[13px] text-app-muted dark:text-slate-400">
-          <CheckCircle className="w-4 h-4 text-app-green" />
-          无变化 — 上下文与对比目标一致
-        </div>
-      )}
-
-      {prevCtx && diff.length > 0 && (
-        <div className="space-y-2">
-          {diff.map((item, i) => (
-            <div key={i} className={`flex items-start gap-3 px-4 py-3 rounded-lg border ${diffBg(item.type)}`}>
-              <div className="mt-0.5">{diffIcon(item.type)}</div>
-              <div className="flex-1 min-w-0">
-                <div className="text-[13px] font-medium text-app-text dark:text-slate-100">{item.label}</div>
-                <div className="text-[12px] text-app-muted dark:text-slate-400 mt-0.5">{item.detail}</div>
-              </div>
-            </div>
-          ))}
         </div>
       )}
 
       {prevCtx && (
         <>
-          {/* Token & Turn Summary */}
-          <div className="mt-6 grid grid-cols-2 gap-2 text-[12px]">
-            <div className="px-3 py-2 bg-app-card dark:bg-slate-700 rounded-lg border border-app-border dark:border-slate-600">
-              <div className="text-app-muted dark:text-slate-400 text-[12px]">总 Tokens 变化</div>
-              <div className="font-mono text-app-text dark:text-slate-100 font-medium mt-0.5">
-                {fmtK(prevCtx.total_tokens_estimate)} → {fmtK(currentCtx.total_tokens_estimate)}
-                <span className={`ml-2 text-[12px] ${currentCtx.total_tokens_estimate - prevCtx.total_tokens_estimate >= 0 ? "text-app-amber" : "text-app-green"}`}>
-                  ({currentCtx.total_tokens_estimate - prevCtx.total_tokens_estimate >= 0 ? "+" : ""}
-                  {fmtK(currentCtx.total_tokens_estimate - prevCtx.total_tokens_estimate)})
-                </span>
-              </div>
-            </div>
-            <div className="px-3 py-2 bg-app-card dark:bg-slate-700 rounded-lg border border-app-border dark:border-slate-600">
-              <div className="text-app-muted dark:text-slate-400 text-[12px]">对话轮数</div>
-              <div className="font-mono text-app-text dark:text-slate-100 font-medium mt-0.5">
-                {prevCtx.breakdown.history_turns} → {currentCtx.breakdown.history_turns} 轮
-              </div>
-            </div>
+          {/* ─── 总览卡 ─── */}
+          <div className="grid grid-cols-4 gap-2 mb-6">
+            <StatCard label="Tokens" value={`${fmtK(currentCtx.total_tokens_estimate)}`} delta={tokenDelta} />
+            <StatCard label="对话轮数" value={`${currentCtx.breakdown.history_turns} 轮`} delta={turnDelta} />
+            <StatCard label="工具调用" value={`${currentCtx.breakdown.tool_calls.length} 次`} delta={toolCallDelta} />
+            <StatCard label="思考" value={`${currentCtx.breakdown.thinking_count} 次`} delta={thinkingDelta} zeroNeutral />
           </div>
 
-          {/* Section-level char diff */}
-          {sectionDiffs.length > 0 && (
-            <div className="mt-6">
-              <h3 className="text-[13px] font-semibold mb-3 text-app-text dark:text-slate-100">
-                Sections 字符变化
-              </h3>
-              <div className="space-y-1">
-                {sectionDiffs.map((sd, i) => (
-                  <div
-                    key={i}
-                    className="flex items-center justify-between px-3 py-2 bg-app-card dark:bg-slate-700 rounded-lg border border-app-border dark:border-slate-600 text-[12px]"
-                  >
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span
-                        className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                          sd.type === "system"
-                            ? "bg-gray-400"
-                            : sd.type === "message"
-                            ? "bg-app-accent"
-                            : "bg-app-purple"
-                        }`}
-                      />
-                      <span className="text-app-muted dark:text-slate-400 truncate">{sd.label}</span>
-                    </div>
-                    <div className="flex items-center gap-2 font-mono shrink-0">
-                      <span className="text-app-subtle dark:text-slate-500">
-                        {fmtK(sd.prevChars)} → {fmtK(sd.currentChars)}
-                      </span>
-                      <span
-                        className={`${
-                          sd.delta > 0
-                            ? "text-app-amber dark:text-amber-400"
-                            : sd.delta < 0
-                            ? "text-app-green dark:text-green-400"
-                            : "text-app-muted dark:text-slate-400"
-                        }`}
-                      >
-                        {sd.delta > 0 ? "+" : ""}
-                        {fmtK(sd.delta)}
-                      </span>
-                    </div>
+          {/* ─── 新增内容 ─── */}
+          {(newSections.length > 0 || newToolCalls.length > 0) && (
+            <div className="mb-6">
+              <h3 className="text-[13px] font-semibold mb-3 text-app-text dark:text-slate-100">新增内容</h3>
+              <div className="space-y-1.5">
+                {newSections.map((s, i) => (
+                  <div key={i} className="flex items-center gap-2 px-3 py-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                    <Plus className="w-3.5 h-3.5 text-app-green shrink-0" />
+                    <span className="text-[12px] text-app-text dark:text-slate-200 truncate">{s.label}</span>
+                    <span className="text-[11px] text-app-muted dark:text-slate-400 font-mono ml-auto shrink-0">+{fmtK(Math.round(s.chars / 4))}</span>
+                  </div>
+                ))}
+                {newToolCalls.map((t, i) => (
+                  <div key={`tc-${i}`} className="flex items-center gap-2 px-3 py-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                    <Wrench className="w-3.5 h-3.5 text-app-green shrink-0" />
+                    <span className="text-[12px] text-app-text dark:text-slate-200">{t.name}</span>
+                    <span className="text-[10px] text-app-muted dark:text-slate-400 font-mono truncate ml-2">{t.input_preview?.slice(0, 60)}</span>
+                  </div>
+                ))}
+                {thinkingDelta > 0 && (
+                  <div className="flex items-center gap-2 px-3 py-2 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+                    <Brain className="w-3.5 h-3.5 text-app-green shrink-0" />
+                    <span className="text-[12px] text-app-text dark:text-slate-200">思考过程</span>
+                    <span className="text-[11px] text-app-muted dark:text-slate-400 ml-auto shrink-0">+{thinkingDelta} 段</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* ─── 配置变化 ─── */}
+          <div className="mb-6">
+            <h3 className="text-[13px] font-semibold mb-3 text-app-text dark:text-slate-100">
+              配置变化 {configChanges.length === 0 && <span className="text-app-muted dark:text-slate-400 font-normal text-[12px]">— 无变化</span>}
+            </h3>
+            {configChanges.length > 0 && (
+              <div className="space-y-1.5">
+                {configChanges.map((c, i) => (
+                  <div key={i} className="flex items-center gap-2 px-3 py-2 bg-app-card dark:bg-slate-700 border border-app-border dark:border-slate-600 rounded-lg">
+                    {c.icon}
+                    <span className="text-[12px] text-app-text dark:text-slate-200">{c.label}</span>
+                    <span className="text-[11px] text-app-muted dark:text-slate-400 ml-auto">{c.detail}</span>
                   </div>
                 ))}
               </div>
+            )}
+          </div>
+
+          {/* ─── 上下文占用对比 ─── */}
+          <div className="mb-6">
+            <h3 className="text-[13px] font-semibold mb-3 text-app-text dark:text-slate-100">上下文占用对比</h3>
+            {/* Previous bar */}
+            <div className="mb-2">
+              <div className="text-[10px] text-app-muted dark:text-slate-500 mb-1">对比目标 #{targetId} · {fmtK(prevCtx.total_tokens_estimate)} tokens</div>
+              <div className="flex h-2.5 rounded-full overflow-hidden bg-gray-100 dark:bg-slate-700">
+                {barData.prev.map((b, i) => (
+                  <div key={i} className={b.color} style={{ width: `${Math.max(b.pct, 0.5)}%` }} title={`${b.label}: ${fmtK(Math.round(b.chars/4))}`} />
+                ))}
+              </div>
+            </div>
+            {/* Current bar */}
+            <div>
+              <div className="text-[10px] text-app-muted dark:text-slate-500 mb-1">当前请求 #{selectedId} · {fmtK(currentCtx.total_tokens_estimate)} tokens {tokenDelta !== 0 && <span className={tokenDelta > 0 ? "text-app-amber" : "text-app-green"}>({tokenDelta > 0 ? "+" : ""}{fmtK(tokenDelta)})</span>}</div>
+              <div className="flex h-2.5 rounded-full overflow-hidden bg-gray-100 dark:bg-slate-700">
+                {barData.cur.map((b, i) => (
+                  <div key={i} className={b.color} style={{ width: `${Math.max(b.pct, 0.5)}%` }} title={`${b.label}: ${fmtK(Math.round(b.chars/4))}`} />
+                ))}
+              </div>
+            </div>
+            {/* Legend */}
+            <div className="flex flex-wrap gap-x-3 gap-y-1 mt-2">
+              {barData.cur.slice(0, 8).map((b, i) => (
+                <div key={i} className="flex items-center gap-1 text-[10px] text-app-muted dark:text-slate-500">
+                  <span className={`w-2 h-2 rounded-sm ${b.color}`} />
+                  {b.label}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* ─── 无变化提示 ─── */}
+          {newSections.length === 0 && newToolCalls.length === 0 && configChanges.length === 0 && tokenDelta === 0 && (
+            <div className="flex items-center gap-2 px-4 py-3 bg-app-card dark:bg-slate-700 rounded-lg border border-app-border dark:border-slate-600 text-[13px] text-app-muted dark:text-slate-400">
+              <CheckCircle className="w-4 h-4 text-app-green" />
+              上下文与对比目标完全一致
             </div>
           )}
         </>
       )}
+    </div>
+  );
+}
+
+function StatCard({ label, value, delta, zeroNeutral }: { label: string; value: string; delta: number; zeroNeutral?: boolean }) {
+  const deltaCls = delta > 0 ? "text-app-amber" : delta < 0 ? "text-app-green" : zeroNeutral ? "text-app-muted" : "text-app-amber";
+  return (
+    <div className="px-3 py-2.5 bg-app-card dark:bg-slate-700 border border-app-border dark:border-slate-600 rounded-lg">
+      <div className="text-[11px] text-app-muted dark:text-slate-400">{label}</div>
+      <div className="text-[14px] font-semibold text-app-text dark:text-slate-100 mt-0.5">{value}</div>
+      <div className={`text-[11px] font-mono ${deltaCls}`}>{delta > 0 ? `+${delta}` : delta < 0 ? `${delta}` : "·"}</div>
     </div>
   );
 }

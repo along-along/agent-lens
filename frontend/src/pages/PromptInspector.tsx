@@ -119,9 +119,10 @@ export default function PromptInspector({ selectedId }: Props) {
     });
 
     // ── 技能 ──
-    const skillNodes: TreeNode[] = bd.skills.map((name) => ({
-      key: `skill-${name}`,
-      label: name,
+    const skillNodes: TreeNode[] = bd.skills.map((s) => ({
+      key: `skill-${s.name}`,
+      label: s.name,
+      content: s.description || undefined,
     }));
 
     // ── 工具 ──

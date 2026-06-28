@@ -199,7 +199,7 @@ export default function Overview({ selectedId }: Props) {
       name: "技能",
       status: bd.skills.length > 0 ? "loaded" : "not-found",
       tokens: 0,
-      source: bd.skills.length > 0 ? `${bd.skills.length} 个: ${bd.skills.slice(0, 5).join(", ")}${bd.skills.length > 5 ? "…" : ""}` : "—",
+      source: bd.skills.length > 0 ? `${bd.skills.length} 个: ${bd.skills.slice(0, 5).map((s) => s.name).join(", ")}${bd.skills.length > 5 ? "…" : ""}` : "—",
       icon: <Zap className="w-4 h-4" />,
     },
     {

@@ -274,10 +274,10 @@ def _extract_breakdown(body, messages, response=None):
 
         # 从技能块中提取 - name: description 格式的行
         import re
-        skill_matches = re.findall(r'^- (\S+?):', skill_block, re.MULTILINE)
-        for s in skill_matches:
-            if s and not s.startswith('-') and len(s) < 80:
-                breakdown["skills"].append(s)
+        skill_matches = re.findall(r'^- (\S+?):\s*(.*)', skill_block, re.MULTILINE)
+        for name, desc in skill_matches:
+            if name and not name.startswith('-') and len(name) < 80:
+                breakdown["skills"].append({"name": name, "description": desc.strip()})
 
     # 提取工具名称
     tools = body.get("tools", [])

@@ -53,7 +53,7 @@ export interface ContextBreakdown {
   claude_md: { path: string; content: string; chars: number } | null;
   rules: { path: string; content: string; chars: number }[];
   memory: { path: string; content: string; chars: number } | null;
-  skills: string[];
+  skills: { name: string; description: string }[];
   tool_names: string[];
   tool_calls: { name: string; tool_use_id: string; input_preview: string }[];
   tool_results: { tool_use_id: string; preview: string }[];
