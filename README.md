@@ -130,6 +130,14 @@ npm run build
 # 打包分发包（生成 dist/agentlens-v1.0-portable.zip）
 scripts/build.bat      # Windows
 ./scripts/build.sh     # Mac/Linux
+
+
+# 源码调试 启动 Web UI（一个终端）
+python server.py
+
+# 源码调试 启动代理（另一个终端，指定你的真实 API 地址）
+$env:PROXY_TARGET="https://api.deepseek.com/anthropic"
+python proxy.py
 ```
 
 ---

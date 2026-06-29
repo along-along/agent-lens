@@ -1,7 +1,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { fetchRequestDetail, type RequestDetail } from "../api/client";
-import { ChevronDown, ChevronRight, Braces, Maximize2, Minimize2, Search, X, ChevronUp, ChevronDown as ChevronDownIcon } from "lucide-react";
+import { ChevronDown, ChevronRight, Braces, Maximize2, Minimize2, Search, X, ChevronUp, ChevronDown as ChevronDownIcon, Languages } from "lucide-react";
 import { ContentSkeleton } from "../components/Skeleton";
+import { getAnnotation } from "../data/annotations";
 
 interface Props {
   selectedId: number | null;
@@ -83,6 +84,9 @@ function JsonNode({
   defaultOpen,
   highlight,
   expandVersion,
+  path = [],
+  showAnnotations = false,
+  compact = false,
 }: {
   keyName?: string;
   value: unknown;
@@ -90,6 +94,9 @@ function JsonNode({
   defaultOpen?: boolean;
   highlight: string;
   expandVersion: number;
+  path?: string[];
+  showAnnotations?: boolean;
+  compact?: boolean;
 }) {
   const isExpandable =
     value !== null && typeof value === "object" && !Array.isArray(value)
@@ -97,6 +104,7 @@ function JsonNode({
       : Array.isArray(value) && (value as unknown[]).length > 0;
 
   const [open, setOpen] = useState(defaultOpen ?? depth < 2);
+  const [expanded, setExpanded] = useState(false);
 
   // 全局展开 — 版本号变化时强制全部展开
   useEffect(() => {
@@ -105,14 +113,61 @@ function JsonNode({
     }
   }, [expandVersion, isExpandable]);
 
+  const annotation = keyName ? getAnnotation(path, keyName.replace(/^\[|\]$/g, ""), value) : null;
+
   if (!isExpandable) {
     const { text, cls } = formatVal(value);
+    const TRUNCATE_LEN = 200;
+    const shouldTruncate = compact && !expanded && text.length > TRUNCATE_LEN;
+    const displayText = shouldTruncate ? text.slice(0, TRUNCATE_LEN) : text;
+    // 完整模式下：把 JSON 转义的 \n 渲染为真实换行
+    const renderMultiline = !compact && typeof value === "string" && text.includes("\\n");
+
     return (
-      <div className="flex items-start font-mono text-[12px] leading-relaxed" style={{ paddingLeft: depth * 16 }}>
+      <div
+        className={`flex items-start font-mono text-[12px] leading-relaxed ${annotation ? "hover:bg-blue-50/50 dark:hover:bg-blue-900/20 rounded" : ""}`}
+        style={{ paddingLeft: depth * 16 }}
+      >
         {keyName !== undefined && (
           <HighlightedKey text={keyName} keyword={highlight} />
         )}
-        <HighlightedText text={text} keyword={highlight} cls={cls} />
+        <span className="min-w-0">
+          {renderMultiline ? (
+            <span className={cls + " whitespace-pre-wrap break-words"}>
+              {(value as string).split("\n").map((line, i, arr) => (
+                <span key={i}>
+                  {highlight ? <HighlightedText text={line} keyword={highlight} cls="" /> : line}
+                  {i < arr.length - 1 && <br />}
+                </span>
+              ))}
+            </span>
+          ) : (
+            <>
+              <HighlightedText text={displayText} keyword={highlight} cls={cls} />
+              {shouldTruncate && (
+                <button
+                  onClick={() => setExpanded(true)}
+                  className="inline ml-1 text-[11px] text-app-accent dark:text-blue-400 hover:underline"
+                >
+                  ...({text.length} 字符，点击展开)
+                </button>
+              )}
+              {compact && expanded && text.length > TRUNCATE_LEN && (
+                <button
+                  onClick={() => setExpanded(false)}
+                  className="inline ml-1 text-[11px] text-app-accent dark:text-blue-400 hover:underline"
+                >
+                  (收起)
+                </button>
+              )}
+            </>
+          )}
+        </span>
+        {annotation && showAnnotations && (
+          <span className="ml-3 text-[11px] text-app-accent/70 dark:text-blue-400/60 shrink-0 whitespace-nowrap">
+            ← {annotation}
+          </span>
+        )}
       </div>
     );
   }
@@ -144,6 +199,11 @@ function JsonNode({
         {!open && (
           <span className="text-app-subtle dark:text-slate-500 text-[11px] ml-1">&hellip;</span>
         )}
+        {annotation && showAnnotations && (
+          <span className="ml-3 text-[11px] text-app-accent/70 dark:text-blue-400/60 shrink-0 whitespace-nowrap">
+            ← {annotation}
+          </span>
+        )}
       </button>
       {open &&
         entries.map(([k, v]) => (
@@ -155,6 +215,9 @@ function JsonNode({
             defaultOpen={depth < 1}
             highlight={highlight}
             expandVersion={expandVersion}
+            path={[...path, keyName || ""].filter(Boolean)}
+            showAnnotations={showAnnotations}
+            compact={compact}
           />
         ))}
     </div>
@@ -169,6 +232,8 @@ function JsonSection({
   forceOpen,
   highlight,
   expandVersion,
+  showAnnotations = false,
+  compact = false,
 }: {
   title: string;
   data: unknown;
@@ -176,6 +241,8 @@ function JsonSection({
   forceOpen?: boolean | null;
   highlight: string;
   expandVersion: number;
+  showAnnotations?: boolean;
+  compact?: boolean;
 }) {
   const [open, setOpen] = useState(defaultOpen ?? true);
 
@@ -208,7 +275,7 @@ function JsonSection({
       {open && (
         <div className="px-3 pb-3 border-t border-app-border/50 dark:border-slate-600/50 overflow-x-auto">
           <div className="pt-2">
-            <JsonNode value={data} depth={0} defaultOpen={true} highlight={highlight} expandVersion={expandVersion} />
+            <JsonNode value={data} depth={0} defaultOpen={true} highlight={highlight} expandVersion={expandVersion} path={[title.toLowerCase()]} showAnnotations={showAnnotations} compact={compact} />
           </div>
         </div>
       )}
@@ -224,6 +291,8 @@ export default function RawData({ selectedId }: Props) {
   const [highlight, setHighlight] = useState("");
   const [expandVersion, setExpandVersion] = useState(0);
   const [activeMatch, setActiveMatch] = useState(0);
+  const [showAnnotations, setShowAnnotations] = useState(true);
+  const [compact, setCompact] = useState(true);
 
   // 设定高亮时自动展开全部节点
   useEffect(() => {
@@ -337,7 +406,7 @@ export default function RawData({ selectedId }: Props) {
   }
 
   return (
-    <div className="p-6 max-w-4xl pb-12">
+    <div className="p-6 pb-12">
       {/* Header + Toolbar — sticky */}
       <div className="sticky top-0 z-10 bg-app-bg dark:bg-slate-900 pb-4 -mx-6 px-6 -mt-6 pt-6">
         <div className="flex items-center justify-between gap-3 mb-3">
@@ -351,6 +420,29 @@ export default function RawData({ selectedId }: Props) {
           </div>
         </div>
         <div className="flex items-center gap-1">
+          <button
+            onClick={() => setShowAnnotations(!showAnnotations)}
+            className={`flex items-center gap-1 px-2.5 py-1 text-[12px] rounded transition-colors ${
+              showAnnotations
+                ? "text-app-accent dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20"
+                : "text-app-muted dark:text-slate-400 hover:text-app-text dark:hover:text-slate-200 hover:bg-black/[0.04] dark:hover:bg-white/5"
+            }`}
+            title="切换中文标注"
+          >
+            <Languages className="w-3 h-3" />
+            标注
+          </button>
+          <button
+            onClick={() => setCompact(!compact)}
+            className={`flex items-center gap-1 px-2.5 py-1 text-[12px] rounded transition-colors ${
+              compact
+                ? "text-app-accent dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20"
+                : "text-app-muted dark:text-slate-400 hover:text-app-text dark:hover:text-slate-200 hover:bg-black/[0.04] dark:hover:bg-white/5"
+            }`}
+            title="长文本截断/完整切换"
+          >
+            {compact ? "精简" : "完整"}
+          </button>
           <button
             onClick={() => handleForce(true)}
             className="flex items-center gap-1 px-2.5 py-1 text-[12px] text-app-muted dark:text-slate-400 hover:text-app-text dark:hover:text-slate-200 hover:bg-black/[0.04] dark:hover:bg-white/5 rounded transition-colors"
@@ -430,7 +522,7 @@ export default function RawData({ selectedId }: Props) {
       </div>
       </div>
 
-      {/* Body — scrollable */}
+      {/* Body */}
       <div className="mb-4">
         <JsonSection
           title="Request"
@@ -439,6 +531,8 @@ export default function RawData({ selectedId }: Props) {
           forceOpen={expandAll}
           highlight={highlight}
           expandVersion={expandVersion}
+          showAnnotations={showAnnotations}
+          compact={compact}
         />
       </div>
 
@@ -451,6 +545,8 @@ export default function RawData({ selectedId }: Props) {
           forceOpen={expandAll}
           highlight={highlight}
           expandVersion={expandVersion}
+          showAnnotations={showAnnotations}
+          compact={compact}
         />
       </div>
 
