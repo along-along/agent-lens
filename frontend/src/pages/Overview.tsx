@@ -1,20 +1,8 @@
 import { useState, useEffect } from "react";
 import { fetchRequestContext, type ContextResponse } from "../api/client";
 import { fmtK } from "../lib/utils";
-import { cva, type VariantProps } from "class-variance-authority";
-import { AlertTriangle, CheckCircle, XCircle, FileText, Brain, Zap, Wrench, BookOpen, Globe, FolderOpen } from "lucide-react";
+import { AlertTriangle, CheckCircle, XCircle, FileText, Brain, Zap, Wrench, BookOpen } from "lucide-react";
 import { ContentSkeleton } from "../components/Skeleton";
-
-function StepBadge({ num, label }: { num: number; label: string }) {
-  return (
-    <div className="flex items-center gap-2 px-3 py-2 bg-app-card dark:bg-slate-700 border border-app-border dark:border-slate-600 rounded-lg">
-      <span className="w-7 h-7 rounded-full bg-app-accent dark:bg-blue-600 text-white text-[15px] font-bold flex items-center justify-center shrink-0">
-        {num}
-      </span>
-      <span className="text-[17px] font-medium text-app-text dark:text-slate-200">{label}</span>
-    </div>
-  );
-}
 
 interface Props {
   selectedId: number | null;
@@ -26,72 +14,6 @@ interface LoadedItem {
   tokens: number;
   source: string;
   icon: React.ReactNode;
-}
-
-// ── 统一 ConceptCard（cva） ──
-
-const conceptCardVariants = cva(
-  "rounded-lg border transition-colors",
-  {
-    variants: {
-      variant: {
-        default:
-          "p-4 bg-app-card dark:bg-slate-700 border-app-border dark:border-slate-600 hover:border-app-accent/20 dark:hover:border-slate-500",
-        wide:
-          "p-4 bg-app-card dark:bg-slate-700 border-app-border dark:border-slate-600 hover:border-app-accent/20 dark:hover:border-slate-500",
-        highlight:
-          "p-5 bg-gradient-to-r from-app-accent/[0.03] to-transparent dark:from-blue-500/5 dark:to-transparent border-app-accent/20 dark:border-blue-500/20 hover:border-app-accent/30 dark:hover:border-blue-500/30",
-      },
-    },
-    defaultVariants: {
-      variant: "default",
-    },
-  }
-);
-
-const tagVariants = cva(
-  "text-[12px] px-1.5 py-0.5 rounded-full font-medium",
-  {
-    variants: {
-      variant: {
-        default: "bg-app-accent/10 dark:bg-blue-500/15 text-app-accent dark:text-blue-400",
-        wide: "bg-app-accent/10 dark:bg-blue-500/15 text-app-accent dark:text-blue-400",
-        highlight: "bg-app-accent dark:bg-blue-500 text-white",
-      },
-    },
-    defaultVariants: {
-      variant: "default",
-    },
-  }
-);
-
-interface ConceptCardProps extends VariantProps<typeof conceptCardVariants> {
-  icon: React.ReactNode;
-  name: string;
-  tag: string;
-  desc: string;
-  location: string;
-}
-
-function ConceptCard({ icon, name, tag, desc, location, variant = "default" }: ConceptCardProps) {
-  const isHighlight = variant === "highlight";
-  return (
-    <div className={conceptCardVariants({ variant })}>
-      <div className="flex items-center gap-2 mb-2">
-        <div className={isHighlight ? "text-app-accent dark:text-blue-400" : "text-app-muted dark:text-slate-400"}>
-          {icon}
-        </div>
-        <span className={`font-semibold text-app-text dark:text-slate-100 ${isHighlight ? "text-[14px]" : "text-[13px]"}`}>
-          {name}
-        </span>
-        <span className={tagVariants({ variant })}>{tag}</span>
-      </div>
-      <p className="text-app-muted dark:text-slate-400 leading-relaxed mb-2 text-[12px]">
-        {desc}
-      </p>
-      <div className="text-[12px] text-app-subtle dark:text-slate-500 font-mono">{location}</div>
-    </div>
-  );
 }
 
 // ── Page ──
@@ -111,49 +33,42 @@ export default function Overview({ selectedId }: Props) {
   if (!selectedId) {
     return (
       <div className="flex items-center justify-center h-full">
-        <div className="text-center max-w-lg px-6">
-          {/* Brand */}
+        <div className="text-center max-w-md px-6">
+          {/* Brand — compact */}
           <h1 className="text-[36px] font-bold tracking-tight text-app-text dark:text-slate-100 mb-2">
             Agent<span className="text-app-accent dark:text-blue-400">Lens</span>
-            <span className="text-[18px] text-app-subtle dark:text-slate-500 font-normal ml-2">AI 探针</span>
           </h1>
-          <p className="text-[18px] text-app-muted dark:text-slate-400 mb-8">
-            The DevTools for AI Agents
+          <p className="text-[16px] text-app-muted dark:text-slate-400 mb-1">
+            See what your AI Agent actually sees.
+          </p>
+          <p className="text-[14px] text-app-subtle dark:text-slate-500 mb-8">
+            看见 Agent 实际拿到的上下文，而不是猜测。
           </p>
 
-          {/* Value prop */}
-          <p className="text-[24px] text-app-text dark:text-slate-200 leading-relaxed mb-10">
-            看见 Agent 实际拿到了什么上下文，而不是猜测
-          </p>
-
-          {/* 3 steps */}
-          <div className="flex items-center justify-center gap-3 mb-10">
-            <StepBadge num={1} label="拦截请求" />
-            <span className="text-app-subtle dark:text-slate-500 text-[26px]">→</span>
-            <StepBadge num={2} label="记录上下文" />
-            <span className="text-app-subtle dark:text-slate-500 text-[26px]">→</span>
-            <StepBadge num={3} label="可视化分析" />
+          {/* Quick status */}
+          <div className="inline-flex items-center gap-4 px-4 py-2.5 bg-app-card dark:bg-slate-700 border border-app-border dark:border-slate-600 rounded-lg mb-8 text-[13px]">
+            <span className="flex items-center gap-1.5 text-app-green dark:text-green-400">
+              <span className="w-2 h-2 rounded-full bg-current animate-pulse" />
+              服务已连接
+            </span>
+            <span className="text-app-border dark:text-slate-600">|</span>
+            <span className="text-app-muted dark:text-slate-400">
+              等待请求数据...
+            </span>
           </div>
 
-          {/* Checklist */}
-          <div className="text-left inline-block space-y-2 mb-8">
-            {[
-              "CLAUDE.md / Rules 是否生效",
-              "Skill 是否加载 · Memory 注入了什么",
-              "MCP 工具是否注册 · 上下文被什么占满",
-              "请求间上下文变化 · 原始请求/响应数据",
-            ].map((text) => (
-              <div key={text} className="flex items-center gap-2 text-[16px] text-app-muted dark:text-slate-400">
-                <span className="text-app-accent dark:text-blue-400 text-[13px]">✓</span>
-                {text}
-              </div>
-            ))}
-          </div>
-
-          {/* CTA */}
-          <p className="text-[15px] text-app-subtle dark:text-slate-500">
-            点击左侧请求列表开始探索
+          {/* Action hint */}
+          <p className="text-[13px] text-app-subtle dark:text-slate-500 mb-4">
+            ← 选择左侧请求开始分析
           </p>
+
+          {/* TODO: 填写B站视频URL */}
+          <a
+            href="#"
+            className="inline-flex items-center gap-1.5 text-[12px] text-app-muted dark:text-slate-400 hover:text-app-accent dark:hover:text-blue-400 transition-colors"
+          >
+            📺 2 分钟了解 AgentLens
+          </a>
         </div>
       </div>
     );
@@ -262,7 +177,7 @@ export default function Overview({ selectedId }: Props) {
   ];
 
   return (
-    <div className="p-6 max-w-3xl">
+    <div className="p-6 max-w-3xl pb-12">
       {/* Conversation Summary */}
       <div className="mb-6 p-4 bg-app-card dark:bg-slate-700 rounded-lg border border-app-border dark:border-slate-600">
         <div className="flex items-center gap-2 mb-2">
@@ -305,17 +220,17 @@ export default function Overview({ selectedId }: Props) {
         {loadedItems.map((item) => (
           <div
             key={item.name}
-            className="flex items-center gap-3 px-4 py-3 bg-app-card dark:bg-slate-700 rounded-lg border border-app-border dark:border-slate-600"
+            className="flex items-center gap-3 px-4 py-3 bg-app-card dark:bg-slate-700 rounded-lg border border-app-border dark:border-slate-600 overflow-hidden"
           >
-            <div className="text-app-muted dark:text-slate-400">{item.icon}</div>
+            <div className="text-app-muted dark:text-slate-400 shrink-0">{item.icon}</div>
             <div className="flex-1 min-w-0">
               <div className="text-[13px] font-medium text-app-text dark:text-slate-100">{item.name}</div>
-              <div className="text-[12px] text-app-muted dark:text-slate-400 truncate">{item.source}</div>
+              <div className="text-[12px] text-app-muted dark:text-slate-400 truncate" title={item.source}>{item.source}</div>
             </div>
-            <div className="text-[12px] text-app-muted dark:text-slate-400 font-mono">
+            <div className="text-[12px] text-app-muted dark:text-slate-400 font-mono shrink-0">
               {item.status === "loaded" ? `${fmtK(item.tokens)} tokens` : "—"}
             </div>
-            <div>{statusIcon(item.status)}</div>
+            <div className="shrink-0">{statusIcon(item.status)}</div>
           </div>
         ))}
       </div>

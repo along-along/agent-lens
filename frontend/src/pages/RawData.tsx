@@ -337,9 +337,9 @@ export default function RawData({ selectedId }: Props) {
   }
 
   return (
-    <div className="p-6 max-w-4xl">
+    <div className="p-6 max-w-4xl pb-12">
       {/* Header + Toolbar — sticky */}
-      <div className="sticky top-0 z-10 bg-app-bg dark:bg-slate-900 pb-4 -mx-6 px-6">
+      <div className="sticky top-0 z-10 bg-app-bg dark:bg-slate-900 pb-4 -mx-6 px-6 -mt-6 pt-6">
         <div className="flex items-center justify-between gap-3 mb-3">
         <div className="flex items-center gap-3">
           <Braces className="w-5 h-5 text-app-accent dark:text-blue-400" />
@@ -455,7 +455,7 @@ export default function RawData({ selectedId }: Props) {
       </div>
 
       {/* Meta */}
-      <div className="grid grid-cols-4 gap-2 mt-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-4">
         <MetaBadge label="耗时" value={`${detail.elapsed_ms}ms`} />
         <MetaBadge label="状态" value={String(detail.status)} />
         <MetaBadge label="Input" value={detail.usage?.input_tokens || "?"} />

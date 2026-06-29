@@ -191,12 +191,12 @@ export default function PromptInspector({ selectedId }: Props) {
           )}
         </div>
         <div className="bg-[#fafaf9] dark:bg-slate-800 border border-app-border dark:border-slate-600 rounded-md overflow-auto max-h-[60vh]">
-          <table className="w-full text-[12px] leading-relaxed font-mono table-fixed">
+          <table className="w-full text-[12px] leading-relaxed font-mono">
             <tbody>
               {visible.map((line, i) => (
                 <tr key={i} className="hover:bg-blue-50/30 dark:hover:bg-blue-900/20">
-                  <td className="line-number py-px select-none">{i + 1}</td>
-                  <td className="py-px pr-3 text-app-text dark:text-slate-300 whitespace-pre-wrap break-all">
+                  <td className="line-number py-px select-none w-[3.5rem] align-top">{i + 1}</td>
+                  <td className="py-px pr-3 text-app-text dark:text-slate-300 whitespace-pre-wrap break-words overflow-hidden">
                     {line || " "}
                   </td>
                 </tr>
@@ -236,7 +236,7 @@ export default function PromptInspector({ selectedId }: Props) {
   return (
     <div className="flex h-full">
       {/* Left: Tree */}
-      <div className="w-72 shrink-0 border-r border-app-border dark:border-slate-700 overflow-y-auto bg-app-sidebar/50 dark:bg-slate-800/50">
+      <div className="w-64 min-w-[200px] shrink-0 border-r border-app-border dark:border-slate-700 overflow-y-auto bg-app-sidebar/50 dark:bg-slate-800/50">
         {(Object.keys(tree) as (keyof typeof tree)[]).map((group) => {
           const nodes = tree[group];
           if (nodes.length === 0) return null;

@@ -35,10 +35,18 @@ pre, code {
 .line-number {
   user-select: none;
   color: #d1d5db;
-  min-width: 3ch;
+  min-width: 3.5rem;
+  width: 3.5rem;
   text-align: right;
   padding-right: 12px;
+  font-size: 11px;
+  vertical-align: top;
 }
 .dark .line-number {
   color: #64748b;
+}
+
+/* Prevent content areas from overflowing viewport */
+.overflow-wrap-anywhere {
+  overflow-wrap: anywhere;
 }

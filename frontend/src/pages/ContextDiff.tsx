@@ -126,7 +126,7 @@ export default function ContextDiff({ selectedId }: Props) {
   if (loading || !currentCtx) return <ContentSkeleton rows={5} />;
 
   return (
-    <div className="p-6 max-w-3xl">
+    <div className="p-6 max-w-3xl pb-12">
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
         <GitCompare className="w-5 h-5 text-app-accent dark:text-blue-400" />
@@ -168,7 +168,7 @@ export default function ContextDiff({ selectedId }: Props) {
       {prevCtx && (
         <>
           {/* ─── 总览卡 ─── */}
-          <div className="grid grid-cols-4 gap-2 mb-6">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-6">
             <StatCard label="Tokens" value={`${fmtK(currentCtx.total_tokens_estimate)}`} delta={tokenDelta} />
             <StatCard label="对话轮数" value={`${currentCtx.breakdown.history_turns} 轮`} delta={turnDelta} />
             <StatCard label="工具调用" value={`${currentCtx.breakdown.tool_calls.length} 次`} delta={toolCallDelta} />

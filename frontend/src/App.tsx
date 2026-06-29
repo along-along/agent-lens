@@ -113,15 +113,15 @@ export default function App() {
   return (
     <div className="flex flex-col h-screen bg-app-bg dark:bg-slate-900">
       {/* Top Bar */}
-      <header className="h-9 bg-app-sidebar dark:bg-slate-800 border-b border-app-border dark:border-slate-700 flex items-center px-4 shrink-0">
-        <div className="flex items-center gap-1.5">
+      <header className="h-9 bg-app-sidebar dark:bg-slate-800 border-b border-app-border dark:border-slate-700 flex items-center px-4 shrink-0 overflow-hidden">
+        <div className="flex items-center gap-1.5 shrink-0">
           <span className="font-bold text-[14px] tracking-tight text-app-text dark:text-slate-100">
             Agent
           </span>
           <span className="font-bold text-[14px] text-app-accent dark:text-blue-400">Lens</span>
           <span className="text-[11px] text-app-subtle dark:text-slate-500 ml-1">AI探针</span>
         </div>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-2 overflow-hidden">
           {/* Connection status */}
           <span
             className={`flex items-center gap-1 text-[11px] ${
@@ -140,15 +140,6 @@ export default function App() {
 
           {/* Links */}
           <a
-            href="#"
-            className="flex items-center gap-1 px-2 py-0.5 text-[12px] text-app-muted dark:text-slate-400 hover:text-app-text dark:hover:text-slate-200 hover:bg-black/[0.04] dark:hover:bg-white/5 rounded transition-colors"
-            title="Git 仓库（待配置）"
-          >
-            <ExternalLink className="w-3 h-3" />
-            Git
-          </a>
-          <span className="text-app-border dark:text-slate-600">·</span>
-          <a
             href="https://gitee.com/along-ai/agent-lens"
             target="_blank"
             rel="noopener noreferrer"
@@ -157,6 +148,27 @@ export default function App() {
           >
             <ExternalLink className="w-3 h-3" />
             Gitee
+          </a>
+          <span className="text-app-border dark:text-slate-600">·</span>
+          {/* TODO: 填写B站视频URL */}
+          <a
+            href="#"
+            className="flex items-center gap-1 px-2 py-0.5 text-[12px] text-app-muted dark:text-slate-400 hover:text-app-text dark:hover:text-slate-200 hover:bg-black/[0.04] dark:hover:bg-white/5 rounded transition-colors"
+            title="B站教程"
+          >
+            <ExternalLink className="w-3 h-3" />
+            教程
+          </a>
+          <span className="text-app-border dark:text-slate-600">·</span>
+          <a
+            href="https://my.feishu.cn/wiki/FlL6wIZVnioDQXkmStGcU9vwnge?fromScene=spaceOverview"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1 px-2 py-0.5 text-[12px] text-app-muted dark:text-slate-400 hover:text-app-text dark:hover:text-slate-200 hover:bg-black/[0.04] dark:hover:bg-white/5 rounded transition-colors"
+            title="知识库"
+          >
+            <BookOpen className="w-3 h-3" />
+            Wiki
           </a>
           <span className="text-app-border dark:text-slate-600">·</span>
           <NavLink
@@ -173,17 +185,6 @@ export default function App() {
             <HelpCircle className="w-3 h-3" />
             概念
           </NavLink>
-          <span className="text-app-border dark:text-slate-600">·</span>
-          <a
-            href="https://my.feishu.cn/wiki/FlL6wIZVnioDQXkmStGcU9vwnge?fromScene=spaceOverview"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1 px-2 py-0.5 text-[12px] text-app-muted dark:text-slate-400 hover:text-app-text dark:hover:text-slate-200 hover:bg-black/[0.04] dark:hover:bg-white/5 rounded transition-colors"
-            title="知识库"
-          >
-            <BookOpen className="w-3 h-3" />
-            Wiki
-          </a>
 
           {/* Theme toggle */}
           <span className="text-app-border dark:text-slate-600">·</span>
@@ -298,16 +299,16 @@ export default function App() {
                     <span className="text-[12px] text-app-subtle dark:text-slate-500 font-mono shrink-0">
                       #{r.id}
                     </span>
-                    <span className="text-[12px] text-app-subtle dark:text-slate-500">
+                    <span className="text-[12px] text-app-subtle dark:text-slate-500 truncate">
                       {r.timestamp?.slice(11, 19)}
                     </span>
                   </div>
-                  <div className="text-[14px] text-app-text dark:text-slate-200 truncate font-medium">
+                  <div className="text-[13px] text-app-text dark:text-slate-200 truncate font-medium leading-snug">
                     {r.preview || `#${r.id}`}
                   </div>
-                  <div className="flex gap-2 mt-0.5">
+                  <div className="flex items-center gap-2 mt-0.5 overflow-hidden">
                     <span
-                      className={`text-[12px] px-1.5 py-0.5 rounded font-medium ${
+                      className={`text-[11px] px-1.5 py-0.5 rounded font-medium shrink-0 ${
                         r.request_type === "main"
                           ? "text-app-accent dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30"
                           : r.request_type === "tool_call"
@@ -321,7 +322,7 @@ export default function App() {
                         ] || r.request_type
                       }
                     </span>
-                    <span className="text-[12px] text-app-subtle dark:text-slate-500">{r.model}</span>
+                    <span className="text-[11px] text-app-subtle dark:text-slate-500 truncate">{r.model}</span>
                   </div>
                 </button>
               ))}

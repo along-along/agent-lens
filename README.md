@@ -1,134 +1,133 @@
 # AgentLens
 
-> The DevTools for AI Agents.
-> See prompts, context, tools, memory, and execution flows in one place.
+**See what your AI Agent actually sees.**
 
-**AI Agent 可观测性工具。让开发者看见 Agent 的上下文、工具调用、记忆注入和执行链路。**
+AI Agent 的 DevTools — 拦截请求，可视化上下文，看见 Prompt 里到底有什么。
 
-中文产品名：**AI探针**
+<!-- TODO: 截图 -->
+<!-- ![screenshot](docs/screenshot.png) -->
 
-## 解决什么问题
+---
 
-- Agent 为什么变笨了？→ 看上下文是不是被撑爆了
-- CLAUDE.md / Rules 到底生效了吗？→ 在 System Prompt 里一目了然
-- Skill 到底塞哪里了？→ 展开 Messages 就看到
-- Memory 到底注入了什么？→ 上下文分布一览无余
-- MCP 工具到底传了什么？→ Tools 区完整展示
-- 上下文到底用了多少？→ 可视化 Bar 直接看分布
-- 一个问题为什么调了这么多次 API？→ 请求类型标签告诉你
-- 执行链路是怎样的？→ 思考→调用工具→获取结果→生成回答，全流程可见
+## 它能帮你做什么
 
-## 架构
+- **CLAUDE.md / Rules 到底生效了没？** — System Prompt 区一目了然
+- **上下文为什么被撑爆了？** — 每个部分占了多少 Token，可视化分布
+- **Skill / Memory / MCP 工具注入了什么？** — 逐项拆解，完整展开
+- **两次请求间变了什么？** — Diff 对比，类似 Git
+- **原始请求/响应数据** — JSON 树形浏览，搜索高亮
 
-```
-Claude Code
-    ↓
-proxy.py (localhost:8899) — 拦截、记录、透明转发（支持 SSE 流式）
-    ↓
-目标 API（DeepSeek / Anthropic / 任意兼容接口）
-
-data/requests.jsonl — 每行一条完整记录（request + response）
-
-server.py (localhost:8900) — REST API + 静态前端
-    ↓
-浏览器 — React SPA 四页面（总览 / 提示词 / 对比 / 链路）
-
-前端技术栈：React 19 + TypeScript + Vite + TailwindCSS
-构建产物：static/（Vite build → Flask 直接 serve）
-```
+---
 
 ## 快速开始
 
-```powershell
-# 1. 安装 Python 依赖
+### 方式一：下载压缩包（推荐）
+
+<!-- TODO: 填写发布包下载链接 -->
+1. 下载 `agentlens-v1.0-portable.zip`
+2. 解压到任意目录
+3. 双击 `start.bat`（Windows）或运行 `./start.sh`（Mac/Linux）
+4. 首次启动会自动安装 Python 依赖
+
+### 方式二：源码运行
+
+```bash
+# 克隆仓库
+git clone https://gitee.com/along-ai/agent-lens.git
+cd agent-lens
+
+# 安装 Python 依赖
 pip install -r requirements.txt
 
-# 2. 构建前端（首次需要 Node.js，后续 server.py 直接 serve 静态产物）
-cd frontend && npm install && npm run build && cd ..
+# 启动
+start.bat          # Windows
+./start.sh         # Mac/Linux
+```
 
-# 3. 启动 Web UI（一个终端）
-python server.py
+### 启动后
 
-# 4. 启动代理（另一个终端，指定你的真实 API 地址）
-$env:PROXY_TARGET="https://api.deepseek.com/anthropic"
-python proxy.py
+```bash
+# 配置你的 AI Agent 走代理
+set ANTHROPIC_BASE_URL=http://localhost:8899     # Windows
+export ANTHROPIC_BASE_URL=http://localhost:8899   # Mac/Linux
 
-# 5. 配置 Claude Code 走代理
-$env:ANTHROPIC_BASE_URL="http://localhost:8899"
+# 正常使用 Agent（Claude Code / Cline / Cursor...）
 claude
 
-# 6. 浏览器打开
+# 打开浏览器查看
 http://localhost:8900
 ```
 
+就这样。请求会自动被记录和分析。
 
-## 功能
+> **前端开发者注意**：修改前端源码后需要重新构建 `cd frontend && npm install && npm run build`
 
-四个页面，一个侧边栏：
+---
 
-### 总览 — 一眼看清上下文
-
-- **已加载上下文**：CLAUDE.md / 记忆 / 技能 / 规则 / MCP 工具，每项显示 ✓/✗ 状态、Token 数、来源路径
-- **上下文占用**：横向分布图，直观看到每部分占比
-- **警告**：对话历史膨胀、上下文接近上限、缺失关键配置等智能提示
-
-### 提示词 — 最终 Prompt 组成
-
-- **左侧树**：系统 / 消息 / 工具 三组可折叠，每项独立节点
-  - 系统提示词：计费标记、身份声明、核心指令（固定模板标注）
-  - 消息：CLAUDE.md / 记忆 / 规则 / 技能 / 对话历史 / 工具结果 逐条拆开
-  - 工具：完整 MCP 工具定义列表
-- **右侧内容**：点击节点查看完整内容，带行号，JSON 自动格式化，超长内容可折叠
-
-### 对比 — 请求间上下文变化
-
-- 当前请求 vs 上一请求的结构化 Diff
-- 新增 / 删除 / 修改 / 截断 四类变化，类似 Git Diff
-- CLAUDE.md / 记忆 / 技能 / 规则 逐项对比
-
-### 链路 — 执行流程（即将上线）
-
-- User → 思考 → 调用工具 → 结果 → 回复 全链路可视化
-- 点击节点查看输入 / 输出 / 耗时
-
-
-
-## 数据存储
-
-不用数据库。一个 JSONL 文件。
+## 工作原理
 
 ```
-data/requests.jsonl
+你的 AI Agent (Claude Code / Cline / Cursor)
+    ↓ 请求
+AgentLens Proxy (localhost:8899) — 拦截 & 记录
+    ↓ 透明转发
+目标 API (DeepSeek / Anthropic / OpenAI...)
+
+AgentLens Web UI (localhost:8900) — 可视化分析
 ```
 
-每行：
-```json
-{"id":1,"timestamp":"...","model":"...","request_type":"main","request":{...},"response":{...}}
-```
+---
 
-优点：零依赖、容易调试、容易分享、容易导出。
+## 页面说明
+
+| 页面 | 功能 |
+|------|------|
+| 总览 | 上下文加载状态 + Token 分布 + 警告 |
+| 提示词 | System Prompt / Messages / Tools 完整拆解 |
+| 对比 | 两次请求间的上下文 Diff |
+| 原始 | JSON 树形浏览 + 搜索高亮 |
+| 链路 | 执行流程可视化（用户→思考→工具→回复）|
+
+<!-- TODO: 各页面截图 -->
+
+---
 
 ## 配置
 
 | 环境变量 | 默认值 | 说明 |
 |---------|--------|------|
-| PROXY_PORT | 8899 | 代理监听端口 |
-| PROXY_TARGET | https://api.deepseek.com/anthropic | 转发目标（改成你的实际 API） |
-| VIEWER_PORT | 8900 | Web UI 端口 |
+| `PROXY_PORT` | 8899 | 代理端口 |
+| `PROXY_TARGET` | `https://api.deepseek.com/anthropic` | 转发目标 |
+| `VIEWER_PORT` | 8900 | Web UI 端口 |
 
-## 已知问题
+---
 
-- Windows 上 `.py` 文件可能被 TortoiseSVN/Git diff hook 加 TSD 头——如果遇到，用 `shutil.copy2` 从 `.txt` 复制过去
-- 代理转发目标必须通过 `PROXY_TARGET` 环境变量指定，默认是 Anthropic 官方地址
+## 项目结构
 
-## 下一步
+```
+├── server.py          # Web UI 服务
+├── proxy.py           # 代理拦截
+├── frontend/          # 前端源码 (React + Vite + TailwindCSS)
+├── static/            # 前端构建产物
+├── data/              # 请求记录 (JSONL)
+├── scripts/           # 打包脚本
+├── start.bat          # Windows 一键启动
+└── start.sh           # Linux/Mac 一键启动
+```
 
-- [x] 多页面 SPA 架构（React + Vite + TypeScript + TailwindCSS）
-- [x] Context Diff — 请求间上下文变化对比
-- [ ] 按会话分组折叠
-- [ ] 搜索功能（在所有请求中搜索特定内容）
-- [ ] SSE 实时推送（替代 3 秒轮询）
-- [ ] Token 使用趋势图
-- [ ] Execution Flow 完整实现
-- [ ] PyPI 包发布 (`pip install agentlens`)
-- [ ] 正向代理模式（支持 Qoder CLI / Cursor CLI 等）
+---
+
+## 相关资源
+
+<!-- TODO: 填写B站视频URL -->
+- 📺 **视频教程**: [B站]()
+- 📖 **知识库**: [飞书文档](https://my.feishu.cn/wiki/FlL6wIZVnioDQXkmStGcU9vwnge?fromScene=spaceOverview)
+<!-- TODO: 填写Git仓库URL -->
+- ⭐ **仓库**: [Gitee](https://gitee.com/along-ai/agent-lens)
+<!-- TODO: 飞书群二维码 -->
+
+---
+
+## License
+
+MIT

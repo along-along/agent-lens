@@ -115,16 +115,16 @@ function FlowCard({
           className="rounded-lg border border-app-border dark:border-slate-600 bg-app-card dark:bg-slate-700 hover:border-app-accent/20 dark:hover:border-slate-500 transition-colors cursor-pointer"
           onClick={() => node.content && setExpanded(!expanded)}
         >
-          <div className="px-4 py-3 flex items-center gap-3">
+          <div className="px-4 py-3 flex items-center gap-2">
             <span
-              className={`text-[12px] px-1.5 py-0.5 rounded-full font-medium ${badgeColor}`}
+              className={`text-[11px] px-1.5 py-0.5 rounded-full font-medium shrink-0 ${badgeColor}`}
             >
               {typeLabel}
             </span>
-            <span className="text-[13px] font-medium text-app-text dark:text-slate-100 flex-1 truncate">
+            <span className="text-[13px] font-medium text-app-text dark:text-slate-100 flex-1 truncate min-w-0">
               {node.label}
             </span>
-            <div className="flex items-center gap-3 text-[12px] text-app-muted dark:text-slate-400">
+            <div className="flex items-center gap-2 text-[11px] text-app-muted dark:text-slate-400 shrink-0">
               {node.elapsedMs !== undefined && (
                 <span className="flex items-center gap-1">
                   <Clock className="w-3 h-3" />
@@ -317,7 +317,7 @@ export default function ExecutionFlow({ selectedId }: Props) {
   }
 
   return (
-    <div className="p-6 max-w-3xl">
+    <div className="p-6 max-w-3xl pb-12">
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
         <GitFork className="w-5 h-5 text-app-accent" />
@@ -332,7 +332,7 @@ export default function ExecutionFlow({ selectedId }: Props) {
 
       {/* Meta badges */}
       {detail && (
-        <div className="grid grid-cols-4 gap-2 mb-6">
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-6">
           <MetaBadge label="耗时" value={`${detail.elapsed_ms}ms`} />
           <MetaBadge label="状态" value={String(detail.status)} />
           <MetaBadge label="Input Tokens" value={String(detail.usage?.input_tokens ?? "?")} />
