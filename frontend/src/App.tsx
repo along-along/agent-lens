@@ -140,6 +140,17 @@ export default function App() {
 
           {/* Links */}
           <a
+            href="https://github.com/along-along/agent-lens"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-1 px-2 py-0.5 text-[12px] text-app-muted dark:text-slate-400 hover:text-app-text dark:hover:text-slate-200 hover:bg-black/[0.04] dark:hover:bg-white/5 rounded transition-colors"
+            title="GitHub 仓库"
+          >
+            <ExternalLink className="w-3 h-3" />
+            GitHub
+          </a>
+          <span className="text-app-border dark:text-slate-600">·</span>
+          <a
             href="https://gitee.com/along-ai/agent-lens"
             target="_blank"
             rel="noopener noreferrer"
