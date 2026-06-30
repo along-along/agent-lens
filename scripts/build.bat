@@ -114,17 +114,20 @@ echo trap "kill $PROXY_PID $SERVER_PID 2^>/dev/null; exit 0" SIGINT SIGTERM
 echo wait
 ) > dist\agentlens\start.sh
 
-:: Step 3: 压缩
+:: Step 3: 压缩（文件名带时间戳）
 echo [3/3] Creating zip archive...
-powershell -Command "Compress-Archive -Path 'dist\agentlens\*' -DestinationPath 'dist\agentlens-v1.0-portable.zip' -Force"
-echo [OK] Package: dist\agentlens-v1.0-portable.zip
+for /f "tokens=1-3 delims=/ " %%a in ('date /t') do set D=%%a%%b%%c
+for /f "tokens=1-2 delims=: " %%a in ('time /t') do set T=%%a%%b
+set ZIPNAME=agentlens-v1.0-%D%-%T%-portable.zip
+powershell -Command "Compress-Archive -Path 'dist\agentlens\*' -DestinationPath 'dist\%ZIPNAME%' -Force"
+echo [OK] Package: dist\%ZIPNAME%
 
 echo.
 echo ============================================
 echo   Build Complete!
 echo.
 echo   文件夹: dist\agentlens\
-echo   压缩包: dist\agentlens-v1.0-portable.zip
+echo   压缩包: dist\%ZIPNAME%
 echo.
 echo   用户拿到后:
 echo     1. 解压

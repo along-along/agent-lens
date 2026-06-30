@@ -84,6 +84,8 @@ function JsonNode({
   defaultOpen,
   highlight,
   expandVersion,
+  expandAllVersion = 0,
+  collapseVersion = 0,
   path = [],
   showAnnotations = false,
   compact = false,
@@ -94,6 +96,8 @@ function JsonNode({
   defaultOpen?: boolean;
   highlight: string;
   expandVersion: number;
+  expandAllVersion?: number;
+  collapseVersion?: number;
   path?: string[];
   showAnnotations?: boolean;
   compact?: boolean;
@@ -106,67 +110,115 @@ function JsonNode({
   const [open, setOpen] = useState(defaultOpen ?? depth < 2);
   const [expanded, setExpanded] = useState(false);
 
-  // 全局展开 — 版本号变化时强制全部展开
+  // 展开一层 — 版本号变化时只展开前两层
   useEffect(() => {
-    if (expandVersion > 0 && isExpandable) {
+    if (expandVersion > 0 && isExpandable && depth < 2) {
       setOpen(true);
     }
-  }, [expandVersion, isExpandable]);
+  }, [expandVersion, isExpandable, depth]);
+
+  // 展开全部 — 版本号变化时展开所有层
+  useEffect(() => {
+    if (expandAllVersion > 0 && isExpandable) {
+      setOpen(true);
+    }
+  }, [expandAllVersion, isExpandable]);
+
+  // 收起全部 — 版本号变化时关闭所有子节点
+  useEffect(() => {
+    if (collapseVersion > 0 && isExpandable) {
+      setOpen(false);
+    }
+  }, [collapseVersion, isExpandable]);
 
   const annotation = keyName ? getAnnotation(path, keyName.replace(/^\[|\]$/g, ""), value) : null;
 
   if (!isExpandable) {
     const { text, cls } = formatVal(value);
     const TRUNCATE_LEN = 200;
-    const shouldTruncate = compact && !expanded && text.length > TRUNCATE_LEN;
-    const displayText = shouldTruncate ? text.slice(0, TRUNCATE_LEN) : text;
-    // 完整模式下：把 JSON 转义的 \n 渲染为真实换行
-    const renderMultiline = !compact && typeof value === "string" && text.includes("\\n");
+    // 避免在转义序列中间截断
+    let truncLen = TRUNCATE_LEN;
+    if (compact && text.length > TRUNCATE_LEN) {
+      // 找到 200 字符附近的安全截断点（不在 \ 后面）
+      while (truncLen > 180 && text[truncLen - 1] === "\\") truncLen--;
+    }
+    const shouldTruncate = compact && !expanded && text.length > truncLen;
+    const displayText = shouldTruncate ? text.slice(0, truncLen) : text;
+    // 含换行的字符串用多行渲染（精简模式截断后也换行）
+    const hasNewlines = typeof value === "string" && (value as string).includes("\n");
+    const rawText = typeof value === "string" ? (value as string) : text;
+    const displayRaw = shouldTruncate ? rawText.slice(0, truncLen) : rawText;
+    const renderMultiline = hasNewlines;
 
     return (
       <div
-        className={`flex items-start font-mono text-[12px] leading-relaxed ${annotation ? "hover:bg-blue-50/50 dark:hover:bg-blue-900/20 rounded" : ""}`}
+        className={`font-mono text-[12px] leading-relaxed py-[1px] ${annotation ? "hover:bg-blue-50/50 dark:hover:bg-blue-900/20 rounded" : ""}`}
         style={{ paddingLeft: depth * 16 }}
       >
-        {keyName !== undefined && (
-          <HighlightedKey text={keyName} keyword={highlight} />
-        )}
-        <span className="min-w-0">
-          {renderMultiline ? (
-            <span className={cls + " whitespace-pre-wrap break-words"}>
-              {(value as string).split("\n").map((line, i, arr) => (
-                <span key={i}>
-                  {highlight ? <HighlightedText text={line} keyword={highlight} cls="" /> : line}
-                  {i < arr.length - 1 && <br />}
-                </span>
-              ))}
-            </span>
-          ) : (
-            <>
-              <HighlightedText text={displayText} keyword={highlight} cls={cls} />
-              {shouldTruncate && (
-                <button
-                  onClick={() => setExpanded(true)}
-                  className="inline ml-1 text-[11px] text-app-accent dark:text-blue-400 hover:underline"
-                >
-                  ...({text.length} 字符，点击展开)
-                </button>
-              )}
-              {compact && expanded && text.length > TRUNCATE_LEN && (
-                <button
-                  onClick={() => setExpanded(false)}
-                  className="inline ml-1 text-[11px] text-app-accent dark:text-blue-400 hover:underline"
-                >
-                  (收起)
-                </button>
-              )}
-            </>
+        <div className="flex items-start">
+          {keyName !== undefined && (
+            <HighlightedKey text={keyName} keyword={highlight} />
           )}
-        </span>
-        {annotation && showAnnotations && (
-          <span className="ml-3 text-[11px] text-app-accent/70 dark:text-blue-400/60 shrink-0 whitespace-nowrap">
-            ← {annotation}
+          <span className="min-w-0">
+            {renderMultiline ? (
+              <span className={cls + " block whitespace-pre-wrap break-words bg-gray-50/50 dark:bg-slate-800/50 rounded px-2 py-1 mt-0.5 border-l-2 border-app-accent/20 dark:border-blue-500/20"}>
+                {displayRaw.split("\n").map((line, i) => (
+                  <span key={i} className="block hover:bg-blue-50/30 dark:hover:bg-blue-900/10">
+                    <span className="inline-block w-8 text-right text-[10px] text-app-subtle/50 dark:text-slate-600 select-none mr-2">{i + 1}</span>
+                    {highlight ? <HighlightedText text={line} keyword={highlight} cls="" /> : line}
+                  </span>
+                ))}
+                {shouldTruncate && (
+                  <button
+                    onClick={() => setExpanded(true)}
+                    className="block mt-1 text-[11px] text-app-accent dark:text-blue-400 hover:underline"
+                  >
+                    ...({rawText.length} 字符，点击展开)
+                  </button>
+                )}
+                {compact && expanded && rawText.length > TRUNCATE_LEN && (
+                  <button
+                    onClick={() => setExpanded(false)}
+                    className="block mt-1 text-[11px] text-app-accent dark:text-blue-400 hover:underline"
+                  >
+                    (收起)
+                  </button>
+                )}
+              </span>
+            ) : (
+              <>
+                <HighlightedText text={displayText} keyword={highlight} cls={cls} />
+                {shouldTruncate && (
+                  <button
+                    onClick={() => setExpanded(true)}
+                    className="inline ml-1 text-[11px] text-app-accent dark:text-blue-400 hover:underline"
+                  >
+                    ...({text.length} 字符，点击展开)
+                  </button>
+                )}
+                {compact && expanded && text.length > TRUNCATE_LEN && (
+                  <button
+                    onClick={() => setExpanded(false)}
+                    className="inline ml-1 text-[11px] text-app-accent dark:text-blue-400 hover:underline"
+                  >
+                    (收起)
+                  </button>
+                )}
+              </>
+            )}
           </span>
+          {/* 短标注：行尾显示 */}
+          {annotation && showAnnotations && annotation.length <= 30 && (
+            <span className="ml-3 text-[11px] text-app-accent/70 dark:text-blue-400/60 shrink-0 whitespace-nowrap">
+              ← {annotation}
+            </span>
+          )}
+        </div>
+        {/* 长标注：换行显示在下方 */}
+        {annotation && showAnnotations && annotation.length > 30 && (
+          <div className="mt-0.5 text-[11px] text-app-accent/70 dark:text-blue-400/60 leading-snug" style={{ paddingLeft: 12 }}>
+            ↳ {annotation}
+          </div>
         )}
       </div>
     );
@@ -179,10 +231,10 @@ function JsonNode({
   const count = entries.length;
 
   return (
-    <div>
+    <div className={depth === 1 ? "mt-0.5" : ""}>
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-1 font-mono text-[12px] leading-relaxed hover:bg-black/[0.03] dark:hover:bg-white/[0.03] rounded w-full text-left"
+        className="flex items-center gap-1 font-mono text-[12px] leading-relaxed hover:bg-black/[0.03] dark:hover:bg-white/[0.03] rounded w-full text-left py-[1px]"
         style={{ paddingLeft: depth * 16 }}
       >
         {open ? (
@@ -212,9 +264,11 @@ function JsonNode({
             keyName={isArr ? `[${k}]` : k}
             value={v}
             depth={depth + 1}
-            defaultOpen={depth < 1}
+            defaultOpen={false}
             highlight={highlight}
             expandVersion={expandVersion}
+            expandAllVersion={expandAllVersion}
+            collapseVersion={collapseVersion}
             path={[...path, keyName || ""].filter(Boolean)}
             showAnnotations={showAnnotations}
             compact={compact}
@@ -232,6 +286,8 @@ function JsonSection({
   forceOpen,
   highlight,
   expandVersion,
+  expandAllVersion = 0,
+  collapseVersion = 0,
   showAnnotations = false,
   compact = false,
 }: {
@@ -241,6 +297,8 @@ function JsonSection({
   forceOpen?: boolean | null;
   highlight: string;
   expandVersion: number;
+  expandAllVersion?: number;
+  collapseVersion?: number;
   showAnnotations?: boolean;
   compact?: boolean;
 }) {
@@ -275,7 +333,7 @@ function JsonSection({
       {open && (
         <div className="px-3 pb-3 border-t border-app-border/50 dark:border-slate-600/50 overflow-x-auto">
           <div className="pt-2">
-            <JsonNode value={data} depth={0} defaultOpen={true} highlight={highlight} expandVersion={expandVersion} path={[title.toLowerCase()]} showAnnotations={showAnnotations} compact={compact} />
+            <JsonNode value={data} depth={0} defaultOpen={true} highlight={highlight} expandVersion={expandVersion} expandAllVersion={expandAllVersion} collapseVersion={collapseVersion} path={[title.toLowerCase()]} showAnnotations={showAnnotations} compact={compact} />
           </div>
         </div>
       )}
@@ -290,6 +348,8 @@ export default function RawData({ selectedId }: Props) {
   const [expandAll, setExpandAll] = useState<boolean | null>(null);
   const [highlight, setHighlight] = useState("");
   const [expandVersion, setExpandVersion] = useState(0);
+  const [expandAllVersion, setExpandAllVersion] = useState(0);
+  const [collapseVersion, setCollapseVersion] = useState(0);
   const [activeMatch, setActiveMatch] = useState(0);
   const [showAnnotations, setShowAnnotations] = useState(true);
   const [compact, setCompact] = useState(true);
@@ -316,6 +376,8 @@ export default function RawData({ selectedId }: Props) {
   const handleForce = useCallback((val: boolean) => {
     if (val) {
       setExpandVersion((v) => v + 1);
+    } else {
+      setCollapseVersion((v) => v + 1);
     }
     setExpandAll(val);
     setTimeout(() => setExpandAll(null), 0);
@@ -446,10 +508,18 @@ export default function RawData({ selectedId }: Props) {
           <button
             onClick={() => handleForce(true)}
             className="flex items-center gap-1 px-2.5 py-1 text-[12px] text-app-muted dark:text-slate-400 hover:text-app-text dark:hover:text-slate-200 hover:bg-black/[0.04] dark:hover:bg-white/5 rounded transition-colors"
-            title="展开全部 (Ctrl+])"
+            title="展开一层"
           >
             <Maximize2 className="w-3 h-3" />
             展开
+          </button>
+          <button
+            onClick={() => setExpandAllVersion((v) => v + 1)}
+            className="flex items-center gap-1 px-2.5 py-1 text-[12px] text-app-muted dark:text-slate-400 hover:text-app-text dark:hover:text-slate-200 hover:bg-black/[0.04] dark:hover:bg-white/5 rounded transition-colors"
+            title="展开全部层级"
+          >
+            <Maximize2 className="w-3 h-3" />
+            全部展开
           </button>
           <button
             onClick={() => handleForce(false)}
@@ -531,6 +601,8 @@ export default function RawData({ selectedId }: Props) {
           forceOpen={expandAll}
           highlight={highlight}
           expandVersion={expandVersion}
+          expandAllVersion={expandAllVersion}
+          collapseVersion={collapseVersion}
           showAnnotations={showAnnotations}
           compact={compact}
         />
@@ -545,6 +617,8 @@ export default function RawData({ selectedId }: Props) {
           forceOpen={expandAll}
           highlight={highlight}
           expandVersion={expandVersion}
+          expandAllVersion={expandAllVersion}
+          collapseVersion={collapseVersion}
           showAnnotations={showAnnotations}
           compact={compact}
         />

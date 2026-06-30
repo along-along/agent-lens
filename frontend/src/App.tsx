@@ -15,6 +15,8 @@ import {
   Wifi,
   WifiOff,
   HelpCircle,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from "lucide-react";
 import Overview from "./pages/Overview";
 import PromptInspector from "./pages/PromptInspector";
@@ -52,6 +54,7 @@ export default function App() {
   const [loadingList, setLoadingList] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<FilterKey>("all");
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const navigate = useNavigate();
   const { theme, toggle: toggleTheme, isDark } = useTheme();
   const prevDataRef = useRef<string>("");
@@ -115,6 +118,13 @@ export default function App() {
       {/* Top Bar */}
       <header className="h-9 bg-app-sidebar dark:bg-slate-800 border-b border-app-border dark:border-slate-700 flex items-center px-4 shrink-0 overflow-hidden">
         <div className="flex items-center gap-1.5 shrink-0">
+          <button
+            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+            className="p-1 rounded text-app-muted dark:text-slate-400 hover:text-app-text dark:hover:text-slate-200 hover:bg-black/[0.04] dark:hover:bg-white/5 transition-colors"
+            title={sidebarCollapsed ? "展开侧边栏" : "收起侧边栏"}
+          >
+            {sidebarCollapsed ? <PanelLeftOpen className="w-3.5 h-3.5" /> : <PanelLeftClose className="w-3.5 h-3.5" />}
+          </button>
           <span className="font-bold text-[14px] tracking-tight text-app-text dark:text-slate-100">
             Agent
           </span>
@@ -212,7 +222,7 @@ export default function App() {
       {/* Body */}
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar */}
-        <aside className="w-64 bg-app-sidebar dark:bg-slate-800 border-r border-app-border dark:border-slate-700 flex flex-col shrink-0">
+        <aside className={`${sidebarCollapsed ? "w-0 overflow-hidden" : "w-64"} bg-app-sidebar dark:bg-slate-800 border-r border-app-border dark:border-slate-700 flex flex-col shrink-0 transition-all duration-200`}>
           {/* Sub-header */}
           <div className="px-4 py-2.5 border-b border-app-border dark:border-slate-700">
             <p className="text-[12px] text-app-muted dark:text-slate-400">上下文可视化</p>
